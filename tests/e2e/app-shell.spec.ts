@@ -86,3 +86,22 @@ test("mobile shell frame keeps controls visible", async ({ page }) => {
 
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
 })
+
+test("insights tab opens the performance dashboard", async ({ page }) => {
+  await page.context().clearCookies()
+  await page.goto("/")
+  await page.getByRole("button", { name: "시작하기" }).click()
+  await completeOnboarding(page)
+
+  const insightsTab = page.getByRole("button", { name: "성과" })
+  await insightsTab.click()
+
+  await expect(insightsTab).toHaveAttribute("aria-current", "page")
+  await expect(
+    page.getByRole("heading", { name: "이번 주 마케팅 성과" })
+  ).toBeVisible()
+  await expect(page.getByText("쿠폰 전환 퍼널")).toBeVisible()
+
+  await page.getByRole("button", { name: "지난 4주" }).click()
+  await expect(page.getByText("41,920")).toBeVisible()
+})
