@@ -273,7 +273,7 @@ a {
   gap: 10px;
 }
 
-.gx-login-google,
+.gx-login-provider,
 .gx-login-primary {
   display: inline-flex;
   min-height: 56px;
@@ -293,36 +293,61 @@ a {
     transform 0.18s ease;
 }
 
-.gx-login-google {
+.gx-login-provider {
   gap: 10px;
+}
+
+.gx-login-kakao {
+  border: 1px solid rgba(25, 23, 32, 0.08);
+  background: #fee500;
+  color: #191600;
+  box-shadow: 0 14px 30px -24px rgba(25, 23, 32, 0.7);
+}
+
+.gx-login-google {
   border: 1px solid rgba(255, 106, 61, 0.3);
   background: #ffffff;
   color: var(--ink);
   box-shadow: 0 14px 30px -24px rgba(25, 23, 32, 0.7);
 }
 
+.gx-login-kakao:hover,
 .gx-login-google:hover {
   border-color: rgba(255, 106, 61, 0.58);
   box-shadow: 0 18px 34px -22px rgba(25, 23, 32, 0.82);
   transform: translateY(-1px);
 }
 
-.gx-login-google:active,
+.gx-login-provider:active,
 .gx-login-primary:active {
   transform: translateY(0);
 }
 
-.gx-login-google:focus-visible,
+.gx-login-provider:focus-visible,
 .gx-login-primary:focus-visible,
 .gx-login-input:focus {
   outline: 4px solid rgba(255, 106, 61, 0.22);
   outline-offset: 3px;
 }
 
-.gx-login-google-icon {
+.gx-login-provider-icon {
+  display: grid;
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.gx-login-kakao .gx-login-provider-icon {
+  background: rgba(25, 22, 0, 0.11);
+}
+
+.gx-login-google .gx-login-provider-icon {
+  border-radius: 0;
 }
 
 .gx-login-divider {
@@ -354,12 +379,32 @@ a {
   outline: none;
 }
 
+.gx-login-label {
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .gx-login-input::placeholder {
   color: var(--muted);
 }
 
 .gx-login-input:focus {
   border-color: var(--accent);
+}
+
+.gx-login-error {
+  margin: -2px 0 0;
+  border-radius: 14px;
+  background: #fff1ec;
+  color: var(--accent-press);
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .gx-login-primary {

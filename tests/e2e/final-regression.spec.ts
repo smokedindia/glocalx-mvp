@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 import { writeFileSync } from "node:fs"
 
+import { loginWithEmail } from "./auth-helpers"
 import { resetE2eDatabase } from "./global-setup"
 
 test.beforeEach(() => {
@@ -8,7 +9,7 @@ test.beforeEach(() => {
 })
 
 async function completeSetup(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
@@ -44,19 +45,19 @@ test("final responsive regression", async ({ page }) => {
   await page.goto("/")
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/design-unification-desktop.png",
+    path: ".omo/evidence/design-unification-desktop.png"
   })
 
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto("/")
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/design-unification-mobile.png",
+    path: ".omo/evidence/design-unification-mobile.png"
   })
 
   const metrics = await page.evaluate(() => ({
     innerWidth: window.innerWidth,
-    scrollWidth: document.documentElement.scrollWidth,
+    scrollWidth: document.documentElement.scrollWidth
   }))
   writeFileSync(
     ".omo/evidence/design-unification-overflow.json",

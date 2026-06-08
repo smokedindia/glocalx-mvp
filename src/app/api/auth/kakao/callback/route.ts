@@ -6,55 +6,54 @@ import {
   createLoginRedirect,
   getAuthRedirectUri,
   getConfiguredEnv,
-  googleOAuthStateConfig,
   isOAuthStateValid,
+  kakaoOAuthStateConfig,
   recordAuthenticatedProfile
 } from "@/auth/login"
-import { exchangeGoogleCode, fetchGoogleUserInfo } from "@/auth/oauth"
+import { exchangeKakaoCode, fetchKakaoUserInfo } from "@/auth/oauth"
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code") ?? ""
   const state = request.nextUrl.searchParams.get("state") ?? ""
-  const clientId = getConfiguredEnv("GOOGLE_LOGIN_CLIENT_ID")
-  const clientSecret = getConfiguredEnv("GOOGLE_LOGIN_CLIENT_SECRET")
+  const clientId = getConfiguredEnv("KAKAO_CLIENT_ID")
+  const clientSecret = getConfiguredEnv("KAKAO_CLIENT_SECRET")
 
   if (
     code.length === 0 ||
-    !isOAuthStateValid(request, googleOAuthStateConfig, state) ||
-    clientId === undefined ||
-    clientSecret === undefined
+    !isOAuthStateValid(request, kakaoOAuthStateConfig, state) ||
+    clientId === undefined
   ) {
-    return createLoginErrorRedirect("google")
+    return createLoginErrorRedirect("kakao")
   }
 
   const redirectUri = getAuthRedirectUri(
     request,
-    "GOOGLE_LOGIN_REDIRECT_URI",
-    "/api/auth/google/callback"
+    "KAKAO_REDIRECT_URI",
+    "/api/auth/kakao/callback"
   )
-  const token = await exchangeGoogleCode({
+  const token = await exchangeKakaoCode({
     clientId,
-    clientSecret,
+    ...(clientSecret === undefined ? {} : { clientSecret }),
     code,
     redirectUri
   })
   if (token === undefined) {
-    return createLoginErrorRedirect("google")
+    return createLoginErrorRedirect("kakao")
   }
 
-  const userInfo = await fetchGoogleUserInfo(token.accessToken)
+  const userInfo = await fetchKakaoUserInfo(token.accessToken)
   if (userInfo === undefined) {
-    return createLoginErrorRedirect("google")
+    return createLoginErrorRedirect("kakao")
   }
 
   recordAuthenticatedProfile({
     displayName: userInfo.displayName,
     email: userInfo.email,
-    provider: "google",
+    provider: "kakao",
     subjectId: userInfo.subjectId
   })
 
   const response = createLoginRedirect(request)
-  clearOAuthStateCookie(response, googleOAuthStateConfig)
+  clearOAuthStateCookie(response, kakaoOAuthStateConfig)
   return response
 }

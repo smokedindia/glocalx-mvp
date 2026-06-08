@@ -1,7 +1,34 @@
 import { MobileShell } from "@/app/_components/mobile-shell"
 import { appShellCopy } from "@/lib/app-shell"
 
-export default function Home() {
+type HomeProps = {
+  readonly searchParams?: Promise<{
+    readonly [key: string]: string | string[] | undefined
+  }>
+}
+
+function readAuthError(
+  value: string | string[] | undefined
+): string | undefined {
+  const authError = Array.isArray(value) ? value[0] : value
+
+  switch (authError) {
+    case "email":
+      return "이메일 주소를 확인해주세요."
+    case "google":
+      return "Google 로그인을 완료하지 못했습니다."
+    case "kakao":
+      return "Kakao 로그인을 완료하지 못했습니다."
+    default:
+      return undefined
+  }
+}
+
+export default async function Home({
+  searchParams = Promise.resolve({})
+}: HomeProps = {}) {
+  const authErrorMessage = readAuthError((await searchParams)["auth_error"])
+
   return (
     <main className="gx-entry-page">
       <MobileShell
@@ -18,14 +45,27 @@ export default function Home() {
       >
         <section className="gx-login-panel" aria-label="로그인">
           <form
+            action="/api/auth/kakao/start"
+            className="gx-login-form"
+            method="post"
+          >
+            <button className="gx-login-provider gx-login-kakao" type="submit">
+              <span className="gx-login-provider-icon" aria-hidden="true">
+                K
+              </span>
+              Kakao로 계속하기
+            </button>
+          </form>
+
+          <form
             action="/api/auth/google/start"
             className="gx-login-form"
             method="post"
           >
-            <button className="gx-login-google" type="submit">
+            <button className="gx-login-provider gx-login-google" type="submit">
               <svg
                 aria-hidden="true"
-                className="gx-login-google-icon"
+                className="gx-login-provider-icon"
                 viewBox="0 0 24 24"
               >
                 <path
@@ -53,17 +93,28 @@ export default function Home() {
             <span>또는</span>
           </div>
 
+          {authErrorMessage ? (
+            <p className="gx-login-error" role="status">
+              {authErrorMessage}
+            </p>
+          ) : null}
+
           <form
-            action="/api/auth/demo-login"
+            action="/api/auth/email/start"
             className="gx-login-form"
             method="post"
           >
-            <input
-              className="gx-login-input"
-              name="email"
-              placeholder="이메일 주소"
-              type="email"
-            />
+            <label className="gx-login-label">
+              이메일
+              <input
+                autoComplete="email"
+                className="gx-login-input"
+                name="email"
+                placeholder="owner@store.com"
+                required
+                type="email"
+              />
+            </label>
             <button className="gx-login-primary" type="submit">
               이메일로 계속하기
             </button>

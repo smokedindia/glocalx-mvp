@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 
+import { loginWithEmail } from "./auth-helpers"
 import { resetE2eDatabase } from "./global-setup"
 
 test.beforeEach(() => {
@@ -9,7 +10,7 @@ test.beforeEach(() => {
 test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
 
   await expect(
     page.getByRole("button", { name: "네이버 정보 제출" })
@@ -31,7 +32,7 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   ).toBeVisible()
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-5-onboarding-success.png",
+    path: ".omo/evidence/task-5-onboarding-success.png"
   })
 
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
@@ -41,7 +42,7 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
 test("onboarding no result manual fallback", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
 
   await page.getByLabel("네이버 정보").fill("없는가게zzzz")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
@@ -52,6 +53,6 @@ test("onboarding no result manual fallback", async ({ page }) => {
   await expect(page).toHaveURL(/\/onboarding/)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-5-onboarding-fallback.png",
+    path: ".omo/evidence/task-5-onboarding-fallback.png"
   })
 })

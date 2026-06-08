@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test"
 import { writeFileSync } from "node:fs"
 
+import { loginWithEmail } from "./auth-helpers"
+
 async function completeOnboarding(page: Page): Promise<void> {
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
@@ -13,7 +15,7 @@ async function completeOnboarding(page: Page): Promise<void> {
 test("bottom navigation keyboard changes the active tab", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
   await completeOnboarding(page)
 
   const onboardingTab = page.getByRole("button", { name: "온보딩" })
@@ -41,7 +43,7 @@ test("mobile shell frame keeps controls visible", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 })
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
@@ -52,11 +54,11 @@ test("mobile shell frame keeps controls visible", async ({ page }) => {
 
   const metrics = await page.evaluate(() => ({
     innerWidth: window.innerWidth,
-    scrollWidth: document.documentElement.scrollWidth,
+    scrollWidth: document.documentElement.scrollWidth
   }))
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-3-mobile-shell.png",
+    path: ".omo/evidence/task-3-mobile-shell.png"
   })
 
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth)

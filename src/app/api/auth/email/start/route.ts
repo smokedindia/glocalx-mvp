@@ -1,17 +1,23 @@
 import type { NextRequest } from "next/server"
 
-import { createLoginRedirect, recordAuthenticatedProfile } from "@/auth/login"
+import {
+  createLoginErrorRedirect,
+  createLoginRedirect,
+  isValidEmail,
+  recordAuthenticatedProfile
+} from "@/auth/login"
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData()
   const rawEmail = formData.get("email")
-  const email =
-    typeof rawEmail === "string" && rawEmail.trim().length > 0
-      ? rawEmail.trim()
-      : "demo-owner@glocalx.example"
+  const email = typeof rawEmail === "string" ? rawEmail.trim() : ""
+
+  if (!isValidEmail(email)) {
+    return createLoginErrorRedirect("email")
+  }
 
   recordAuthenticatedProfile({
-    displayName: email.split("@")[0] ?? "Demo Owner",
+    displayName: email.split("@")[0] ?? email,
     email,
     provider: "email",
     subjectId: email.toLowerCase()

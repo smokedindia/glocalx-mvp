@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 
+import { loginWithEmail } from "./auth-helpers"
 import { resetE2eDatabase } from "./global-setup"
 
 test.beforeEach(() => {
@@ -9,7 +10,7 @@ test.beforeEach(() => {
 test("app post draft preview from api", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
@@ -30,14 +31,14 @@ test("app post draft preview from api", async ({ page }) => {
   ).toBeVisible()
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-8-post-draft.png",
+    path: ".omo/evidence/task-8-post-draft.png"
   })
 })
 
 test("app publish blocked when location unverified", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
@@ -58,6 +59,6 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await expect(page.getByText("게시 완료")).toHaveCount(0)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-8-post-blocked.png",
+    path: ".omo/evidence/task-8-post-blocked.png"
   })
 })

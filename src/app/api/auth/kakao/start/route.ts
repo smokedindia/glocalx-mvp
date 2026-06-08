@@ -6,35 +6,28 @@ import {
   createOAuthState,
   getAuthRedirectUri,
   getConfiguredEnv,
-  googleOAuthStateConfig,
+  kakaoOAuthStateConfig,
   setOAuthStateCookie
 } from "@/auth/login"
 
-const googleLoginScope = "openid email profile"
-
 export async function POST(request: NextRequest) {
-  const clientId = getConfiguredEnv("GOOGLE_LOGIN_CLIENT_ID")
-  const clientSecret = getConfiguredEnv("GOOGLE_LOGIN_CLIENT_SECRET")
+  const clientId = getConfiguredEnv("KAKAO_CLIENT_ID")
 
-  if (clientId === undefined || clientSecret === undefined) {
-    return createLoginErrorRedirect("google")
+  if (clientId === undefined) {
+    return createLoginErrorRedirect("kakao")
   }
 
   const redirectUri = getAuthRedirectUri(
     request,
-    "GOOGLE_LOGIN_REDIRECT_URI",
-    "/api/auth/google/callback"
+    "KAKAO_REDIRECT_URI",
+    "/api/auth/kakao/callback"
   )
-  const state = createOAuthState("google")
-  const authorizationUrl = new URL(
-    "https://accounts.google.com/o/oauth2/v2/auth"
-  )
+  const state = createOAuthState("kakao")
+  const authorizationUrl = new URL("https://kauth.kakao.com/oauth/authorize")
   authorizationUrl.searchParams.set("client_id", clientId)
   authorizationUrl.searchParams.set("redirect_uri", redirectUri)
   authorizationUrl.searchParams.set("response_type", "code")
-  authorizationUrl.searchParams.set("scope", googleLoginScope)
   authorizationUrl.searchParams.set("state", state)
-  authorizationUrl.searchParams.set("prompt", "select_account")
 
   const response = new NextResponse(null, {
     headers: {
@@ -42,7 +35,7 @@ export async function POST(request: NextRequest) {
     },
     status: 303
   })
-  setOAuthStateCookie(response, googleOAuthStateConfig, state)
+  setOAuthStateCookie(response, kakaoOAuthStateConfig, state)
 
   return response
 }

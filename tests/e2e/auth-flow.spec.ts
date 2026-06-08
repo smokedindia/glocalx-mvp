@@ -1,25 +1,26 @@
 import { expect, test } from "@playwright/test"
 
+import { loginWithEmail } from "./auth-helpers"
 import { resetE2eDatabase } from "./global-setup"
 
 test.beforeEach(() => {
   resetE2eDatabase()
 })
 
-test("First-time demo login routes to onboarding", async ({ page }) => {
+test("First-time email login routes to onboarding", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
 
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
 
   await expect(page).toHaveURL(/\/onboarding/)
   await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
 })
 
-test("Returning demo login routes to the chat dashboard", async ({ page }) => {
+test("Returning email login routes to the chat dashboard", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
@@ -33,17 +34,25 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   ).toBeVisible()
 
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await loginWithEmail(page)
 
   await expect(page).toHaveURL(/\/app/)
 })
 
-test("auth placeholders do not create a demo session", async ({ page }) => {
+test("auth choices do not create a session before submit", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
 
   await expect(page.getByTestId("entry-device")).toBeVisible()
-  await expect(page.getByRole("button", { name: "시작하기" })).toBeEnabled()
+  await expect(
+    page.getByRole("button", { name: "Kakao로 계속하기" })
+  ).toBeEnabled()
+  await expect(
+    page.getByRole("button", { name: "Google로 계속하기" })
+  ).toBeEnabled()
+  await expect(
+    page.getByRole("button", { name: "이메일로 계속하기" })
+  ).toBeEnabled()
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(
@@ -52,7 +61,7 @@ test("auth placeholders do not create a demo session", async ({ page }) => {
 })
 
 test("Protected app route redirects unauthenticated visitors to login", async ({
-  page,
+  page
 }) => {
   await page.context().clearCookies()
 
