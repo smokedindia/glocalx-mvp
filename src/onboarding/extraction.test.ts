@@ -8,17 +8,34 @@ import { z } from "zod"
 import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
 import type {
   AdapterResult,
-  HttpRequestSpec,
   NaverSearchAdapter,
   NaverSearchResult,
 } from "@/integrations/contracts"
 import { createIntegrationAdapters } from "@/integrations"
 import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
 
-import { NaverSearchTimeoutError, extractBusinessProfile } from "./extraction"
+import {
+  NaverSearchTimeoutError,
+  confirmBusinessProfile,
+  extractBusinessProfile,
+} from "./extraction"
 
 const countRowSchema = z.object({
   count: z.number(),
+})
+
+const confirmedRowSchema = z.object({
+  candidate_json: z.string(),
+  status: z.literal("CONFIRMED"),
+})
+
+const storeProfileRowSchema = z.object({
+  address: z.string(),
+  category: z.string(),
+  hours: z.string().nullable(),
+  name: z.string(),
+  onboarding_status: z.string(),
+  phone: z.string().nullable(),
 })
 
 const ambiguousCandidates = [
@@ -39,10 +56,10 @@ const ambiguousCandidates = [
 ] satisfies readonly AdapterBusinessProfileCandidate[]
 
 function fakeNaverSearch(
-  result: AdapterResult<NaverSearchResult | HttpRequestSpec>
+  result: AdapterResult<NaverSearchResult>
 ): NaverSearchAdapter {
   return {
-    searchLocal(): AdapterResult<NaverSearchResult | HttpRequestSpec> {
+    async searchLocal(): Promise<AdapterResult<NaverSearchResult>> {
       return result
     },
   }
@@ -50,7 +67,7 @@ function fakeNaverSearch(
 
 function timeoutNaverSearch(): NaverSearchAdapter {
   return {
-    searchLocal(): AdapterResult<NaverSearchResult | HttpRequestSpec> {
+    async searchLocal(): Promise<AdapterResult<NaverSearchResult>> {
       throw new NaverSearchTimeoutError("브런치모먼트")
     },
   }
@@ -76,7 +93,7 @@ describe("extractBusinessProfile", () => {
     const adapters = createIntegrationAdapters({ database, env: {} })
 
     // When
-    const result = extractBusinessProfile({
+    const result = await extractBusinessProfile({
       adapters,
       database,
       input: "https://naver.me/mybrunchcafe",
@@ -101,12 +118,12 @@ describe("extractBusinessProfile", () => {
     database.close()
   })
 
-  it("returns manual recovery copy when Naver has no result", () => {
+  it("returns manual recovery copy when Naver has no result", async () => {
     // Given
     const adapters = createIntegrationAdapters({ env: {} })
 
     // When
-    const result = extractBusinessProfile({
+    const result = await extractBusinessProfile({
       adapters,
       input: "없는가게zzzz",
       storeId: "demo-store",
@@ -126,7 +143,7 @@ describe("extractBusinessProfile", () => {
     })
   })
 
-  it("requires explicit owner selection when Naver returns ambiguous matches", () => {
+  it("requires explicit owner selection when Naver returns ambiguous matches", async () => {
     // Given
     const adapters = {
       ...createIntegrationAdapters({ env: {} }),
@@ -137,7 +154,7 @@ describe("extractBusinessProfile", () => {
     }
 
     // When
-    const result = extractBusinessProfile({
+    const result = await extractBusinessProfile({
       adapters,
       input: "브런치모먼트",
       storeId: "demo-store",
@@ -153,7 +170,7 @@ describe("extractBusinessProfile", () => {
     }
   })
 
-  it("returns manual recovery copy when the Naver search times out", () => {
+  it("returns manual recovery copy when the Naver search times out", async () => {
     // Given
     const adapters = {
       ...createIntegrationAdapters({ env: {} }),
@@ -161,7 +178,7 @@ describe("extractBusinessProfile", () => {
     }
 
     // When
-    const result = extractBusinessProfile({
+    const result = await extractBusinessProfile({
       adapters,
       input: "브런치모먼트",
       storeId: "demo-store",
@@ -181,34 +198,115 @@ describe("extractBusinessProfile", () => {
     }
   })
 
-  it("keeps the production Naver request headers at the adapter boundary", () => {
+  it("executes production Naver search with server-side credentials", async () => {
     // Given
+    const requests: { input: string; init: RequestInit | undefined }[] = []
     const adapters = createIntegrationAdapters({
       env: {
         APP_INTEGRATION_MODE: "production",
         NAVER_CLIENT_ID: "test-naver-client",
         NAVER_CLIENT_SECRET: "test-naver-secret",
       },
+      fetchImpl: async (input, init) => {
+        requests.push({ input, init })
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                title: "<b>브런치모먼트 홍대점</b>",
+                category: "음식점&gt;카페",
+                roadAddress: "서울 마포구 와우산로 123",
+              },
+            ],
+          }),
+          { status: 200 }
+        )
+      },
     })
 
     // When
-    const result = extractBusinessProfile({
+    const result = await extractBusinessProfile({
       adapters,
       input: "브런치모먼트",
       storeId: "demo-store",
     })
 
     // Then
-    expect(result.status).toBe("NAVER_REQUEST_READY")
-    if (result.status === "NAVER_REQUEST_READY") {
-      expect(result.request).toEqual({
-        method: "GET",
-        url: "https://openapi.naver.com/v1/search/local.json?query=%EB%B8%8C%EB%9F%B0%EC%B9%98%EB%AA%A8%EB%A8%BC%ED%8A%B8&display=5&start=1&sort=random",
+    expect(result.status).toBe("CANDIDATES_FOUND")
+    if (result.status === "CANDIDATES_FOUND") {
+      expect(result.candidates[0]?.name).toBe("브런치모먼트 홍대점")
+    }
+    expect(requests[0]).toMatchObject({
+      input:
+        "https://openapi.naver.com/v1/search/local.json?query=%EB%B8%8C%EB%9F%B0%EC%B9%98%EB%AA%A8%EB%A8%BC%ED%8A%B8&display=5&start=1&sort=random",
+      init: {
         headers: {
           "X-Naver-Client-Id": "test-naver-client",
           "X-Naver-Client-Secret": "test-naver-secret",
         },
-      })
-    }
+        method: "GET",
+      },
+    })
+  })
+
+  it("confirms manual profile input and updates the store profile", async () => {
+    // Given
+    const tempPath = await mkdtemp(join(tmpdir(), "glocalx-confirm-profile-"))
+    tempPaths.push(tempPath)
+    const database = openDatabase(join(tempPath, "confirm.db"))
+    applyMigrations(database)
+    seedDemoData(database)
+
+    // When
+    const result = confirmBusinessProfile({
+      database,
+      input: {
+        source: "MANUAL",
+        input: "수동입력",
+        profile: {
+          name: "테스트 카페",
+          address: "서울 중구 세종대로 1",
+          phone: "02-000-0000",
+          hours: "09:00 ~ 18:00",
+          category: "카페",
+        },
+      },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result.status).toBe("CONFIRMED")
+    const extractionRow = confirmedRowSchema.parse(
+      database
+        .prepare(
+          "SELECT status, candidate_json FROM business_profile_extractions WHERE id = ?"
+        )
+        .get(result.extractionId)
+    )
+    expect(JSON.parse(extractionRow.candidate_json)).toMatchObject({
+      source: "MANUAL",
+      name: "테스트 카페",
+      address: "서울 중구 세종대로 1",
+      category: "카페",
+    })
+
+    const storeRow = storeProfileRowSchema.parse(
+      database
+        .prepare(
+          "SELECT name, address, phone, category, hours, onboarding_status FROM stores WHERE id = ?"
+        )
+        .get("demo-store")
+    )
+    expect(storeRow).toEqual({
+      name: "테스트 카페",
+      address: "서울 중구 세종대로 1",
+      phone: "02-000-0000",
+      category: "카페",
+      hours: "09:00 ~ 18:00",
+      onboarding_status: "IN_PROGRESS",
+    })
+
+    database.close()
   })
 })

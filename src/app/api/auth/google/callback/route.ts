@@ -13,6 +13,7 @@ import { fetchGoogleOAuthProfile } from "@/auth/oauth-providers"
 import {
   expiredGoogleOAuthStateCookieOptions,
   googleOAuthStateCookieName,
+  handleGoogleOAuthCallback,
   isValidGoogleOAuthCallback,
 } from "@/gbp/oauth-callback"
 import { openDatabase } from "@/server/db/sqlite"
@@ -61,6 +62,14 @@ export async function GET(request: NextRequest) {
     let storeId = ""
     try {
       const session = upsertOAuthIdentity(database, profile)
+      handleGoogleOAuthCallback({
+        code,
+        database,
+        expectedState,
+        profile,
+        state,
+        storeId: session.storeId,
+      })
       storeOnboardingComplete = session.onboardingComplete
       userId = session.userId
       storeId = session.storeId

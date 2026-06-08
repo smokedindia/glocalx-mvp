@@ -2,13 +2,11 @@ import { Buffer } from "node:buffer"
 
 import type {
   AdapterBusinessProfileCandidate,
+  ManualBusinessProfile,
   MissingBusinessField,
+  OnboardingConfirmRequest,
 } from "@/domain/schemas"
-import type {
-  HttpRequestSpec,
-  IntegrationAdapters,
-  NaverSearchResult,
-} from "@/integrations/contracts"
+import type { IntegrationAdapters } from "@/integrations/contracts"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
 const manualForm = {
@@ -36,11 +34,6 @@ export type BusinessProfileExtractionResult =
       readonly message: string
     }
   | {
-      readonly status: "NAVER_REQUEST_READY"
-      readonly normalizedQuery: string
-      readonly request: HttpRequestSpec
-    }
-  | {
       readonly status: "BLOCKED_BY_CREDENTIALS"
       readonly normalizedQuery: string
       readonly missingEnvVars: readonly string[]
@@ -52,6 +45,19 @@ export type ExtractBusinessProfileOptions = {
   readonly database?: SqliteDatabase
   readonly input: string
   readonly storeId: string
+}
+
+export type ConfirmBusinessProfileOptions = {
+  readonly database: SqliteDatabase
+  readonly input: OnboardingConfirmRequest
+  readonly now: Date
+  readonly storeId: string
+}
+
+export type BusinessProfileConfirmationResult = {
+  readonly status: "CONFIRMED"
+  readonly extractionId: string
+  readonly profile: AdapterBusinessProfileCandidate
 }
 
 export class NaverSearchTimeoutError extends Error {
@@ -96,12 +102,6 @@ export function normalizeOnboardingInput(input: string): NormalizedInput {
     rawInput,
     query: queryCandidate?.trim() || pathCandidate || parsedUrl.hostname,
   }
-}
-
-function isNaverSearchResult(
-  value: NaverSearchResult | HttpRequestSpec
-): value is NaverSearchResult {
-  return "candidates" in value
 }
 
 function candidateMissingFields(
@@ -149,6 +149,20 @@ function stableExtractionId(storeId: string, normalizedQuery: string): string {
   return `manual-extraction-${encoded}`
 }
 
+function stableConfirmedExtractionId(
+  storeId: string,
+  source: AdapterBusinessProfileCandidate["source"],
+  sourceInput: string,
+  profile: Pick<AdapterBusinessProfileCandidate, "address" | "name">
+): string {
+  const encoded = Buffer.from(
+    `${storeId}:${source}:${sourceInput}:${profile.name}:${profile.address}`
+  )
+    .toString("base64url")
+    .slice(0, 48)
+  return `confirmed-extraction-${encoded}`
+}
+
 function persistManualInputRequired(
   database: SqliteDatabase | undefined,
   options: ExtractBusinessProfileOptions,
@@ -175,13 +189,13 @@ function persistManualInputRequired(
     )
 }
 
-export function extractBusinessProfile(
+export async function extractBusinessProfile(
   options: ExtractBusinessProfileOptions
-): BusinessProfileExtractionResult {
+): Promise<BusinessProfileExtractionResult> {
   const normalized = normalizeOnboardingInput(options.input)
 
   try {
-    const adapterResult = options.adapters.naverSearch.searchLocal({
+    const adapterResult = await options.adapters.naverSearch.searchLocal({
       query: normalized.query,
       display: 5,
     })
@@ -192,14 +206,6 @@ export function extractBusinessProfile(
         normalizedQuery: normalized.query,
         missingEnvVars: adapterResult.missingEnvVars,
         message: "네이버 API 인증 정보가 설정되지 않았습니다.",
-      }
-    }
-
-    if (!isNaverSearchResult(adapterResult.value)) {
-      return {
-        status: "NAVER_REQUEST_READY",
-        normalizedQuery: normalized.query,
-        request: adapterResult.value,
       }
     }
 
@@ -243,5 +249,73 @@ export function extractBusinessProfile(
       return result
     }
     throw error
+  }
+}
+
+function manualProfileToCandidate(
+  profile: ManualBusinessProfile
+): AdapterBusinessProfileCandidate {
+  return normalizeCandidate({
+    ...profile,
+    source: "MANUAL",
+    missingFields: [],
+  })
+}
+
+export function confirmBusinessProfile(
+  options: ConfirmBusinessProfileOptions
+): BusinessProfileConfirmationResult {
+  const sourceInput =
+    options.input.source === "NAVER_LOCAL"
+      ? options.input.input
+      : (options.input.input ?? "MANUAL")
+  const profile =
+    options.input.source === "NAVER_LOCAL"
+      ? normalizeCandidate(options.input.candidate)
+      : manualProfileToCandidate(options.input.profile)
+  const extractionId = stableConfirmedExtractionId(
+    options.storeId,
+    profile.source,
+    sourceInput,
+    profile
+  )
+
+  const persistConfirmation = options.database.transaction(() => {
+    options.database
+      .prepare(
+        "INSERT OR REPLACE INTO business_profile_extractions (id, store_id, source, source_input, status, candidate_json, missing_fields_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      )
+      .run(
+        extractionId,
+        options.storeId,
+        profile.source,
+        sourceInput,
+        "CONFIRMED",
+        JSON.stringify(profile),
+        JSON.stringify(profile.missingFields),
+        options.now.toISOString()
+      )
+
+    options.database
+      .prepare(
+        "UPDATE stores SET name = ?, address = ?, phone = ?, category = ?, hours = ?, onboarding_status = ? WHERE id = ?"
+      )
+      .run(
+        profile.name,
+        profile.address,
+        profile.phone ?? null,
+        profile.category,
+        profile.hours ?? null,
+        "IN_PROGRESS",
+        options.storeId
+      )
+  })
+
+  persistConfirmation()
+
+  return {
+    status: "CONFIRMED",
+    extractionId,
+    profile,
   }
 }

@@ -2,9 +2,11 @@ import type {
   AdapterResult,
   ClockAdapter,
   ContentGenerationAdapter,
+  GbpAccountManagementAdapter,
   GbpBusinessInformationAdapter,
   GbpLocalPostsAdapter,
   GbpReviewsAdapter,
+  GbpVerificationsAdapter,
   GoogleOAuthAdapter,
   JobSchedulerAdapter,
   NaverSearchAdapter,
@@ -58,7 +60,7 @@ export function createStubNaverSearch(
   database?: SqliteDatabase
 ): NaverSearchAdapter {
   return {
-    searchLocal(input): AdapterResult<NaverSearchResult> {
+    async searchLocal(input): Promise<AdapterResult<NaverSearchResult>> {
       if (!isStubSearchQuery(input.query)) {
         return {
           kind: "ok",
@@ -87,16 +89,116 @@ export function createStubGoogleOAuth(): GoogleOAuthAdapter {
   }
 }
 
+export function createStubAccountManagement(): GbpAccountManagementAdapter {
+  return {
+    listAccounts() {
+      return {
+        kind: "ok",
+        value: {
+          method: "GET",
+          url: "stub://gbp/accounts",
+          headers: {},
+          body: {
+            accounts: [
+              {
+                name: "accounts/stub",
+                accountName: "Stub GBP Account",
+                type: "PERSONAL",
+              },
+            ],
+          },
+        },
+      }
+    },
+  }
+}
+
 export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
   return {
-    createLocation() {
+    createLocation(input) {
       return {
         kind: "ok",
         value: {
           method: "POST",
           url: "stub://gbp/locations",
           headers: {},
-          body: { status: "VERIFICATION_PENDING" },
+          body: {
+            status:
+              input.validateOnly === true
+                ? "CREATE_REQUESTED"
+                : "VERIFICATION_PENDING",
+          },
+        },
+      }
+    },
+    listCategories(input) {
+      return {
+        kind: "ok",
+        value: {
+          method: "GET",
+          url: "stub://gbp/categories",
+          headers: {},
+          body: {
+            categories: [
+              {
+                displayName: "브런치 카페",
+                categoryId: "gcid:brunch_restaurant",
+                languageCode: input.languageCode,
+                regionCode: input.regionCode,
+              },
+            ],
+          },
+        },
+      }
+    },
+    searchGoogleLocations() {
+      return {
+        kind: "ok",
+        value: {
+          method: "POST",
+          url: "stub://gbp/googleLocations:search",
+          headers: {},
+          body: {
+            googleLocations: [],
+          },
+        },
+      }
+    },
+  }
+}
+
+export function createStubVerifications(): GbpVerificationsAdapter {
+  return {
+    fetchVerificationOptions(input) {
+      return {
+        kind: "ok",
+        value: {
+          method: "POST",
+          url: "stub://gbp/locations:fetchVerificationOptions",
+          headers: {},
+          body: {
+            languageCode: input.languageCode,
+            options: [
+              {
+                phoneNumber: "+82 2-123-4567",
+                verificationMethod: "PHONE_CALL",
+              },
+            ],
+          },
+        },
+      }
+    },
+    getVoiceOfMerchantState() {
+      return {
+        kind: "ok",
+        value: {
+          method: "GET",
+          url: "stub://gbp/locations/VoiceOfMerchantState",
+          headers: {},
+          body: {
+            hasPendingVerification: true,
+            hasVoiceOfMerchant: false,
+          },
         },
       }
     },

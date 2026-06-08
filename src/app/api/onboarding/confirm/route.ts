@@ -1,8 +1,16 @@
 import type { NextRequest } from "next/server"
 
-import { ensureDemoOwnerStore } from "@/auth/session"
-import { gbpSetupRequestSchema, parseRoutePayload } from "@/domain/schemas"
-import { setupGoogleBusinessProfile } from "@/gbp/setup"
+import {
+  demoSessionCookieName,
+  demoStoreCookieName,
+  getStoredSessionFromCookieValues,
+  onboardingCompleteCookieName,
+} from "@/auth/session"
+import {
+  onboardingConfirmRequestSchema,
+  parseRoutePayload,
+} from "@/domain/schemas"
+import { confirmBusinessProfile } from "@/onboarding/extraction"
 import { createIntegrationAdapters } from "@/integrations"
 import { openDatabase } from "@/server/db/sqlite"
 
@@ -43,7 +51,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const parsed = parseRoutePayload(gbpSetupRequestSchema, payload.payload)
+  const parsed = parseRoutePayload(
+    onboardingConfirmRequestSchema,
+    payload.payload
+  )
   if (parsed.kind === "validation_error") {
     return Response.json(
       {
@@ -54,23 +65,33 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  ensureDemoOwnerStore()
+  const session = getStoredSessionFromCookieValues({
+    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
+      ?.value,
+    storeId: request.cookies.get(demoStoreCookieName)?.value,
+    userId: request.cookies.get(demoSessionCookieName)?.value,
+  })
+  if (session === undefined) {
+    return Response.json(
+      {
+        status: "AUTH_REQUIRED",
+        message: "로그인이 필요합니다.",
+      },
+      { status: 401 }
+    )
+  }
+
   const database = openDatabase()
 
   try {
     const adapters = createIntegrationAdapters({ database })
-    const result = await setupGoogleBusinessProfile({
-      adapters,
+    const result = confirmBusinessProfile({
       database,
-      ...(parsed.value.confirmedExtractionId === undefined
-        ? {}
-        : { confirmedExtractionId: parsed.value.confirmedExtractionId }),
-      ...(parsed.value.idempotencyKey === undefined
-        ? {}
-        : { idempotencyKey: parsed.value.idempotencyKey }),
-      mode: parsed.value.mode,
-      storeId: parsed.value.storeId,
+      input: parsed.value,
+      now: adapters.clock.now(),
+      storeId: session.storeId,
     })
+
     return Response.json(result)
   } finally {
     database.close()

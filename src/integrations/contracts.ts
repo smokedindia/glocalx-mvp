@@ -17,6 +17,11 @@ export type AdapterOk<TValue> = {
 }
 
 export type AdapterResult<TValue> = AdapterOk<TValue> | BlockedByCredentials
+export type AdapterPromiseResult<TValue> = Promise<AdapterResult<TValue>>
+export type AdapterFetch = (
+  input: string,
+  init?: RequestInit
+) => Promise<Response>
 
 export type HttpMethod = "GET" | "POST" | "PUT"
 
@@ -41,7 +46,44 @@ export type CreateLocationInput = {
   readonly accessToken: string
   readonly accountName: string
   readonly requestId: string
+  readonly validateOnly?: boolean
   readonly location: Readonly<Record<string, unknown>>
+}
+
+export type ListAccountsInput = {
+  readonly accessToken: string
+  readonly pageSize?: number
+  readonly pageToken?: string
+  readonly parentAccount?: string
+}
+
+export type ListCategoriesInput = {
+  readonly accessToken: string
+  readonly regionCode: string
+  readonly languageCode: string
+  readonly filter?: string
+  readonly pageSize?: number
+  readonly pageToken?: string
+  readonly view?: string
+}
+
+export type SearchGoogleLocationsInput = {
+  readonly accessToken: string
+  readonly resultCount: number
+  readonly query?: string
+  readonly location?: Readonly<Record<string, unknown>>
+}
+
+export type FetchVerificationOptionsInput = {
+  readonly accessToken: string
+  readonly locationName: string
+  readonly languageCode: string
+  readonly context?: Readonly<Record<string, unknown>>
+}
+
+export type GetVoiceOfMerchantStateInput = {
+  readonly accessToken: string
+  readonly locationName: string
 }
 
 export type CreateLocalPostInput = {
@@ -64,17 +106,32 @@ export type UpdateReplyInput = {
 }
 
 export interface NaverSearchAdapter {
-  searchLocal(
-    input: NaverSearchInput
-  ): AdapterResult<NaverSearchResult | HttpRequestSpec>
+  searchLocal(input: NaverSearchInput): AdapterPromiseResult<NaverSearchResult>
 }
 
 export interface GoogleOAuthAdapter {
   connect(): AdapterResult<{ readonly subjectId: string }>
 }
 
+export interface GbpAccountManagementAdapter {
+  listAccounts(input: ListAccountsInput): AdapterResult<HttpRequestSpec>
+}
+
 export interface GbpBusinessInformationAdapter {
   createLocation(input: CreateLocationInput): AdapterResult<HttpRequestSpec>
+  listCategories(input: ListCategoriesInput): AdapterResult<HttpRequestSpec>
+  searchGoogleLocations(
+    input: SearchGoogleLocationsInput
+  ): AdapterResult<HttpRequestSpec>
+}
+
+export interface GbpVerificationsAdapter {
+  fetchVerificationOptions(
+    input: FetchVerificationOptionsInput
+  ): AdapterResult<HttpRequestSpec>
+  getVoiceOfMerchantState(
+    input: GetVoiceOfMerchantStateInput
+  ): AdapterResult<HttpRequestSpec>
 }
 
 export interface GbpLocalPostsAdapter {
@@ -111,7 +168,9 @@ export type IntegrationAdapters = {
   readonly mode: IntegrationMode
   readonly naverSearch: NaverSearchAdapter
   readonly googleOAuth: GoogleOAuthAdapter
+  readonly gbpAccountManagement: GbpAccountManagementAdapter
   readonly gbpBusinessInformation: GbpBusinessInformationAdapter
+  readonly gbpVerifications: GbpVerificationsAdapter
   readonly gbpLocalPosts: GbpLocalPostsAdapter
   readonly gbpReviews: GbpReviewsAdapter
   readonly contentGeneration: ContentGenerationAdapter
@@ -122,6 +181,7 @@ export type IntegrationAdapters = {
 
 export type CreateIntegrationAdaptersOptions = {
   readonly env?: AdapterEnvironment
+  readonly fetchImpl?: AdapterFetch
   readonly database?: SqliteDatabase
   readonly now?: Date
 }

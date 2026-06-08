@@ -20,6 +20,9 @@ const setupRowsSchema = z.object({
 
 const oauthRowSchema = z.object({
   encrypted_access_token: z.string(),
+  encrypted_refresh_token: z.string().nullable(),
+  expires_at: z.string().nullable(),
+  scopes_json: z.string(),
   subject_id: z.string(),
 })
 
@@ -48,7 +51,7 @@ describe("setupGoogleBusinessProfile", () => {
     const adapters = createIntegrationAdapters({ database, env: {} })
 
     // When
-    const result = setupGoogleBusinessProfile({
+    const result = await setupGoogleBusinessProfile({
       adapters,
       database,
       mode: "stub",
@@ -105,7 +108,95 @@ describe("setupGoogleBusinessProfile", () => {
     })
   })
 
-  it("validates production OAuth state before storing encrypted token placeholders", async () => {
+  it("runs production registration with validation before create", async () => {
+    // Given
+    const database = await createDatabase()
+    const requests: { body?: unknown; method: string; url: string }[] = []
+    const fetchImpl = async (input: string, init?: RequestInit) => {
+      requests.push({
+        url: input,
+        method: init?.method ?? "GET",
+        ...(typeof init?.body === "string"
+          ? { body: JSON.parse(init.body) as unknown }
+          : {}),
+      })
+
+      if (input.includes("accountmanagement")) {
+        return Response.json({
+          accounts: [{ name: "accounts/123", accountName: "Owner Account" }],
+        })
+      }
+      if (input.includes("/categories?")) {
+        return Response.json({
+          categories: [{ categoryId: "gcid:cafe", displayName: "Cafe" }],
+        })
+      }
+      if (input.includes("googleLocations:search")) {
+        return Response.json({ googleLocations: [] })
+      }
+      if (input.includes("validateOnly=true")) {
+        return Response.json({ name: "locations/validated" })
+      }
+      if (input.includes("/locations?")) {
+        return Response.json({
+          name: "locations/created",
+          status: "VERIFICATION_PENDING",
+        })
+      }
+      if (input.includes(":fetchVerificationOptions")) {
+        return Response.json({
+          options: [{ verificationMethod: "PHONE_CALL" }],
+        })
+      }
+      return Response.json({ hasVoiceOfMerchant: false })
+    }
+    const adapters = createIntegrationAdapters({
+      database,
+      env: {
+        APP_INTEGRATION_MODE: "production",
+        GOOGLE_CLIENT_ID: "test-google-client",
+        GOOGLE_CLIENT_SECRET: "test-google-secret",
+      },
+    })
+
+    // When
+    const result = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      fetchImpl,
+      idempotencyKey: "production-setup-test",
+      mode: "production",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result).toMatchObject({
+      status: "VERIFICATION_PENDING",
+      googleLocationId: "locations/created",
+    })
+    expect(requests.map((request) => request.url)).toEqual([
+      "https://mybusinessaccountmanagement.googleapis.com/v1/accounts?pageSize=20",
+      "https://mybusinessbusinessinformation.googleapis.com/v1/categories?regionCode=KR&languageCode=ko&filter=displayName%3D%EB%B8%8C%EB%9F%B0%EC%B9%98+%EC%B9%B4%ED%8E%98&pageSize=10&view=BASIC",
+      "https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search",
+      expect.stringContaining("validateOnly=true"),
+      expect.stringContaining("validateOnly=false"),
+      "https://mybusinessverifications.googleapis.com/v1/locations/created:fetchVerificationOptions",
+      "https://mybusinessverifications.googleapis.com/v1/locations/created/VoiceOfMerchantState",
+    ])
+    expect(requests[2]?.body).toMatchObject({
+      pageSize: 5,
+      location: {
+        title: "브런치모먼트 홍대점",
+        categories: {
+          primaryCategory: { categoryId: "gcid:cafe" },
+        },
+      },
+    })
+
+    database.close()
+  })
+
+  it("validates production OAuth state before storing fetched Google token fields", async () => {
     // Given
     const database = await createDatabase()
 
@@ -128,6 +219,21 @@ describe("setupGoogleBusinessProfile", () => {
       code: "valid-code",
       database,
       expectedState: "demo-store:google-oauth-state",
+      profile: {
+        accessToken: "google-access-token",
+        displayName: "Google Owner",
+        email: "owner@example.com",
+        expiresAt: "2026-06-04T01:00:00.000Z",
+        provider: "GOOGLE",
+        refreshToken: "google-refresh-token",
+        scopes: [
+          "openid",
+          "email",
+          "profile",
+          "https://www.googleapis.com/auth/business.manage",
+        ],
+        subjectId: "google-subject-123",
+      },
       state: "demo-store:google-oauth-state",
       storeId: "demo-store",
     })
@@ -150,13 +256,21 @@ describe("setupGoogleBusinessProfile", () => {
     const oauthRow = oauthRowSchema.parse(
       database
         .prepare(
-          "SELECT encrypted_access_token, subject_id FROM oauth_connections WHERE id = 'production-oauth-google'"
+          "SELECT encrypted_access_token, encrypted_refresh_token, expires_at, scopes_json, subject_id FROM oauth_connections WHERE id = 'production-oauth-google'"
         )
         .get()
     )
     expect(oauthRow).toEqual({
-      encrypted_access_token: "encrypted:valid-code",
-      subject_id: "production-google-oauth-placeholder",
+      encrypted_access_token: "encrypted:google-access-token",
+      encrypted_refresh_token: "encrypted:google-refresh-token",
+      expires_at: "2026-06-04T01:00:00.000Z",
+      scopes_json: JSON.stringify([
+        "openid",
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/business.manage",
+      ]),
+      subject_id: "google-subject-123",
     })
     database.close()
   })

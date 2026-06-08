@@ -1,5 +1,6 @@
 import { googleBusinessManageScope } from "@/integrations/credentials"
 import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { OAuthIdentityProfile } from "@/auth/oauth-identity"
 
 export const googleOAuthStateCookieName = "glocalx_google_oauth_state"
 export const googleOAuthStateCookieOptions = {
@@ -23,6 +24,7 @@ export type GoogleOAuthCallbackOptions = {
   readonly code: string
   readonly database: SqliteDatabase
   readonly expectedState: string
+  readonly profile?: OAuthIdentityProfile
   readonly state: string
   readonly storeId: string
 }
@@ -48,6 +50,21 @@ export function handleGoogleOAuthCallback(
     }
   }
 
+  const subjectId =
+    options.profile?.provider === "GOOGLE"
+      ? options.profile.subjectId
+      : "production-google-oauth-placeholder"
+  const accessToken = options.profile?.accessToken ?? options.code
+  const refreshToken = options.profile?.refreshToken
+  const scopes =
+    options.profile?.provider === "GOOGLE" && options.profile.scopes.length > 0
+      ? options.profile.scopes
+      : googleOAuthScopes
+  const expiresAt =
+    options.profile?.provider === "GOOGLE"
+      ? (options.profile.expiresAt ?? null)
+      : null
+
   options.database
     .prepare(
       "INSERT OR REPLACE INTO oauth_connections (id, store_id, provider, subject_id, encrypted_access_token, encrypted_refresh_token, scopes_json, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -56,11 +73,11 @@ export function handleGoogleOAuthCallback(
       "production-oauth-google",
       options.storeId,
       "GOOGLE",
-      "production-google-oauth-placeholder",
-      `encrypted:${options.code}`,
-      null,
-      JSON.stringify(googleOAuthScopes),
-      null,
+      subjectId,
+      `encrypted:${accessToken}`,
+      refreshToken === undefined ? null : `encrypted:${refreshToken}`,
+      JSON.stringify(scopes),
+      expiresAt,
       new Date("2026-06-04T00:00:00.000Z").toISOString()
     )
 

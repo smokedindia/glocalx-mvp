@@ -3,13 +3,16 @@ import type {
   IntegrationAdapters,
 } from "./contracts"
 import {
+  createProductionAccountManagement,
   createProductionBusinessInformation,
   createProductionGoogleOAuth,
   createProductionLocalPosts,
   createProductionNaverSearch,
   createProductionReviews,
+  createProductionVerifications,
 } from "./production"
 import {
+  createStubAccountManagement,
   createStubBusinessInformation,
   createStubClock,
   createStubContentGeneration,
@@ -19,6 +22,7 @@ import {
   createStubNaverSearch,
   createStubReviews,
   createStubTranslation,
+  createStubVerifications,
 } from "./stub"
 
 export function createIntegrationAdapters(
@@ -32,9 +36,11 @@ export function createIntegrationAdapters(
   if (mode === "production") {
     return {
       mode,
-      naverSearch: createProductionNaverSearch(env),
+      naverSearch: createProductionNaverSearch(env, options.fetchImpl),
       googleOAuth: createProductionGoogleOAuth(env),
+      gbpAccountManagement: createProductionAccountManagement(env),
       gbpBusinessInformation: createProductionBusinessInformation(env),
+      gbpVerifications: createProductionVerifications(env),
       gbpLocalPosts: createProductionLocalPosts(env),
       gbpReviews: createProductionReviews(env),
       contentGeneration: createStubContentGeneration(),
@@ -48,7 +54,9 @@ export function createIntegrationAdapters(
     mode,
     naverSearch: createStubNaverSearch(options.database),
     googleOAuth: createStubGoogleOAuth(),
+    gbpAccountManagement: createStubAccountManagement(),
     gbpBusinessInformation: createStubBusinessInformation(),
+    gbpVerifications: createStubVerifications(),
     gbpLocalPosts: createStubLocalPosts(),
     gbpReviews: createStubReviews(),
     contentGeneration: createStubContentGeneration(),

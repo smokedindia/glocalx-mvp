@@ -10,7 +10,6 @@ import {
   onboardingExtractionRequestSchema,
   parseRoutePayload,
 } from "@/domain/schemas"
-import type { BusinessProfileExtractionResult } from "@/onboarding/extraction"
 import { extractBusinessProfile } from "@/onboarding/extraction"
 import { createIntegrationAdapters } from "@/integrations"
 import { openDatabase } from "@/server/db/sqlite"
@@ -22,21 +21,6 @@ type JsonPayloadResult =
     }
   | {
       readonly kind: "invalid_json"
-    }
-
-type PublicExtractionResult =
-  | Exclude<
-      BusinessProfileExtractionResult,
-      { readonly status: "NAVER_REQUEST_READY" }
-    >
-  | {
-      readonly status: "NAVER_REQUEST_READY"
-      readonly normalizedQuery: string
-      readonly request: {
-        readonly method: string
-        readonly url: string
-        readonly requiredHeaders: readonly string[]
-      }
     }
 
 async function readJsonPayload(
@@ -52,24 +36,6 @@ async function readJsonPayload(
       return { kind: "invalid_json" }
     }
     throw error
-  }
-}
-
-function toPublicResult(
-  result: BusinessProfileExtractionResult
-): PublicExtractionResult {
-  if (result.status !== "NAVER_REQUEST_READY") {
-    return result
-  }
-
-  return {
-    status: "NAVER_REQUEST_READY",
-    normalizedQuery: result.normalizedQuery,
-    request: {
-      method: result.request.method,
-      url: result.request.url,
-      requiredHeaders: Object.keys(result.request.headers),
-    },
   }
 }
 
@@ -119,14 +85,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const adapters = createIntegrationAdapters({ database })
-    const result = extractBusinessProfile({
+    const result = await extractBusinessProfile({
       adapters,
       database,
       input: parsed.value.input,
       storeId: session.storeId,
     })
 
-    return Response.json(toPublicResult(result))
+    return Response.json(result)
   } finally {
     database.close()
   }

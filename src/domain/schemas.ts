@@ -4,11 +4,23 @@ const nonEmptyStringSchema = z.string().trim().min(1)
 
 export const onboardingExtractionRequestSchema = z
   .object({
+    source: z.literal("NAVER_LOCAL").optional().default("NAVER_LOCAL"),
     input: nonEmptyStringSchema,
   })
   .strict()
 
 export const missingBusinessFieldSchema = z.enum(["phone", "hours"])
+
+export const manualBusinessProfileSchema = z
+  .object({
+    name: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    phone: nonEmptyStringSchema.optional(),
+    hours: nonEmptyStringSchema.optional(),
+    websiteUri: z.url().optional(),
+    category: nonEmptyStringSchema,
+  })
+  .strict()
 
 export const adapterBusinessProfileCandidateSchema = z
   .object({
@@ -18,15 +30,39 @@ export const adapterBusinessProfileCandidateSchema = z
     category: nonEmptyStringSchema,
     phone: nonEmptyStringSchema.optional(),
     hours: nonEmptyStringSchema.optional(),
+    websiteUri: z.url().optional(),
+    latitude: z.number().finite().optional(),
+    longitude: z.number().finite().optional(),
     naverPlaceUrl: z.url().optional(),
     missingFields: z.array(missingBusinessFieldSchema),
   })
   .strict()
 
+export const onboardingConfirmRequestSchema = z.discriminatedUnion("source", [
+  z
+    .object({
+      source: z.literal("NAVER_LOCAL"),
+      input: nonEmptyStringSchema,
+      candidate: adapterBusinessProfileCandidateSchema.extend({
+        source: z.literal("NAVER_LOCAL"),
+      }),
+    })
+    .strict(),
+  z
+    .object({
+      source: z.literal("MANUAL"),
+      input: nonEmptyStringSchema.optional(),
+      profile: manualBusinessProfileSchema,
+    })
+    .strict(),
+])
+
 export const gbpSetupRequestSchema = z
   .object({
     storeId: nonEmptyStringSchema,
     mode: z.enum(["stub", "production"]),
+    confirmedExtractionId: nonEmptyStringSchema.optional(),
+    idempotencyKey: nonEmptyStringSchema.optional(),
   })
   .strict()
 
@@ -47,6 +83,10 @@ export const postPublishRequestSchema = z
 
 export type OnboardingExtractionRequest = z.infer<
   typeof onboardingExtractionRequestSchema
+>
+export type ManualBusinessProfile = z.infer<typeof manualBusinessProfileSchema>
+export type OnboardingConfirmRequest = z.infer<
+  typeof onboardingConfirmRequestSchema
 >
 export type GbpSetupRequest = z.infer<typeof gbpSetupRequestSchema>
 export type PostDraftRequest = z.infer<typeof postDraftRequestSchema>

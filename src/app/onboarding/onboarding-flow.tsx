@@ -17,12 +17,19 @@ type ExtractionState =
   | {
       readonly address: string
       readonly category: string
+      readonly hours?: string
       readonly kind: "candidate"
       readonly missingFields: readonly string[]
       readonly name: string
+      readonly naverPlaceUrl?: string
+      readonly phone?: string
+      readonly source: "NAVER_LOCAL"
+      readonly websiteUri?: string
     }
   | { readonly kind: "manual"; readonly message: string }
   | { readonly kind: "error"; readonly message: string }
+
+type OnboardingMode = "NAVER_LOCAL" | "MANUAL"
 
 type SetupState =
   | { readonly kind: "idle" }
@@ -35,10 +42,25 @@ type SetupState =
     }
   | { readonly kind: "error"; readonly message: string }
 
+type ConfirmationState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "loading" }
+  | { readonly extractionId: string; readonly kind: "confirmed" }
+  | { readonly kind: "error"; readonly message: string }
+
 type ExtractionCandidate = Extract<
   ExtractionState,
   { readonly kind: "candidate" }
 >
+
+type ManualProfileForm = {
+  readonly name: string
+  readonly address: string
+  readonly phone: string
+  readonly hours: string
+  readonly websiteUri: string
+  readonly category: string
+}
 
 function toExtractionState(payload: unknown): ExtractionState {
   if (!isRecord(payload)) {
@@ -58,12 +80,21 @@ function toExtractionState(payload: unknown): ExtractionState {
   const candidates = payload["candidates"]
   const firstCandidate = Array.isArray(candidates) ? candidates[0] : undefined
   if (status === "CANDIDATES_FOUND" && isRecord(firstCandidate)) {
+    const hours = readString(firstCandidate["hours"])
+    const naverPlaceUrl = readString(firstCandidate["naverPlaceUrl"])
+    const phone = readString(firstCandidate["phone"])
+    const websiteUri = readString(firstCandidate["websiteUri"])
     return {
       address: readString(firstCandidate["address"]) ?? "주소 확인 필요",
       category: readString(firstCandidate["category"]) ?? "업종 확인 필요",
       kind: "candidate",
       missingFields: readStringArray(firstCandidate["missingFields"]),
       name: readString(firstCandidate["name"]) ?? "매장명 확인 필요",
+      source: "NAVER_LOCAL",
+      ...(hours === undefined ? {} : { hours }),
+      ...(naverPlaceUrl === undefined ? {} : { naverPlaceUrl }),
+      ...(phone === undefined ? {} : { phone }),
+      ...(websiteUri === undefined ? {} : { websiteUri }),
     }
   }
 
@@ -141,6 +172,12 @@ function StoreInfoCard({
         </div>
         <div className="grid gap-1">
           <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
+            전화
+          </dt>
+          <dd>{extraction.phone ?? "전화번호 확인 필요"}</dd>
+        </div>
+        <div className="grid gap-1">
+          <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
             업종
           </dt>
           <dd>{extraction.category}</dd>
@@ -159,18 +196,35 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
     kind: "idle",
   })
   const [input, setInput] = useState("https://naver.me/mybrunchcafe")
+  const [manualProfile, setManualProfile] = useState<ManualProfileForm>({
+    name: "",
+    address: "",
+    phone: "",
+    hours: "",
+    websiteUri: "",
+    category: "",
+  })
+  const [mode, setMode] = useState<OnboardingMode>("NAVER_LOCAL")
+  const [confirmation, setConfirmation] = useState<ConfirmationState>({
+    kind: "idle",
+  })
   const [setup, setSetup] = useState<SetupState>({ kind: "idle" })
   const [submittedInput, setSubmittedInput] = useState("")
+
+  function setManualField(field: keyof ManualProfileForm, value: string) {
+    setManualProfile((current) => ({ ...current, [field]: value }))
+  }
 
   async function handleExtraction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setExtraction({ kind: "loading" })
+    setConfirmation({ kind: "idle" })
     setSetup({ kind: "idle" })
     setSubmittedInput(input)
 
     try {
       const response = await fetch("/api/onboarding/extractions", {
-        body: JSON.stringify({ input }),
+        body: JSON.stringify({ source: "NAVER_LOCAL", input }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })
@@ -183,6 +237,116 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
           error instanceof Error
             ? error.message
             : "가게 정보 조회에 실패했습니다.",
+      })
+    }
+  }
+
+  async function confirmProfile(candidate: ExtractionCandidate) {
+    const response = await fetch("/api/onboarding/confirm", {
+      body: JSON.stringify({
+        source: "NAVER_LOCAL",
+        input: submittedInput || input,
+        candidate: {
+          source: candidate.source,
+          name: candidate.name,
+          address: candidate.address,
+          category: candidate.category,
+          phone: candidate.phone,
+          hours: candidate.hours,
+          websiteUri: candidate.websiteUri,
+          naverPlaceUrl: candidate.naverPlaceUrl,
+          missingFields: candidate.missingFields,
+        },
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    })
+    return response.json() as Promise<unknown>
+  }
+
+  async function confirmManualProfile() {
+    const profile = {
+      name: manualProfile.name,
+      address: manualProfile.address,
+      phone: manualProfile.phone.trim() || undefined,
+      hours: manualProfile.hours.trim() || undefined,
+      websiteUri: manualProfile.websiteUri.trim() || undefined,
+      category: manualProfile.category,
+    }
+    const response = await fetch("/api/onboarding/confirm", {
+      body: JSON.stringify({
+        source: "MANUAL",
+        input: manualProfile.name,
+        profile,
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    })
+    return response.json() as Promise<unknown>
+  }
+
+  async function handleConfirmCandidateAndSetup(
+    candidate: ExtractionCandidate
+  ) {
+    setConfirmation({ kind: "loading" })
+    setSetup({ kind: "idle" })
+
+    try {
+      const payload = await confirmProfile(candidate)
+      if (!isRecord(payload) || readString(payload["status"]) !== "CONFIRMED") {
+        setConfirmation({
+          kind: "error",
+          message: "매장 정보 확인에 실패했습니다.",
+        })
+        return
+      }
+
+      setConfirmation({
+        kind: "confirmed",
+        extractionId: readString(payload["extractionId"]) ?? "confirmed",
+      })
+      await handleSetup()
+    } catch (error) {
+      setConfirmation({
+        kind: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "매장 정보 확인에 실패했습니다.",
+      })
+    }
+  }
+
+  async function handleManualConfirmAndSetup(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault()
+    setConfirmation({ kind: "loading" })
+    setSetup({ kind: "idle" })
+    setSubmittedInput(manualProfile.name)
+
+    try {
+      const payload = await confirmManualProfile()
+      if (!isRecord(payload) || readString(payload["status"]) !== "CONFIRMED") {
+        setConfirmation({
+          kind: "error",
+          message: "직접 입력한 매장 정보를 저장하지 못했습니다.",
+        })
+        return
+      }
+
+      setConfirmation({
+        kind: "confirmed",
+        extractionId: readString(payload["extractionId"]) ?? "confirmed",
+      })
+      await handleSetup()
+    } catch (error) {
+      setConfirmation({
+        kind: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "직접 입력한 매장 정보를 저장하지 못했습니다.",
       })
     }
   }
@@ -239,7 +403,7 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
       >
         <section aria-label="온보딩 대화" className="grid gap-3">
           <ChatMessage
-            message="네이버 플레이스 링크나 가게 이름을 알려주세요."
+            message="네이버 플레이스에서 자동으로 찾거나 직접 매장 정보를 입력할 수 있어요."
             speaker="assistant"
           />
           <div aria-label="온보딩 진행 정보" className="flex flex-wrap gap-2">
@@ -249,25 +413,144 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
           </div>
         </section>
 
-        <form className="gx-onboarding-form" onSubmit={handleExtraction}>
-          <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
-            네이버 정보
-            <input
-              className="gx-onboarding-input"
-              onChange={(event) => setInput(event.currentTarget.value)}
-              placeholder="https://naver.me/mybrunchcafe"
-              type="text"
-              value={input}
-            />
-          </label>
+        <div
+          aria-label="등록 방식"
+          className="grid grid-cols-2 gap-2"
+          role="group"
+        >
           <button
+            aria-pressed={mode === "NAVER_LOCAL"}
             className="gx-onboarding-primary"
-            disabled={extraction.kind === "loading"}
-            type="submit"
+            onClick={() => setMode("NAVER_LOCAL")}
+            type="button"
           >
-            네이버 정보 제출
+            네이버 자동
           </button>
-        </form>
+          <button
+            aria-pressed={mode === "MANUAL"}
+            className="gx-onboarding-primary"
+            onClick={() => {
+              setMode("MANUAL")
+              setExtraction({
+                kind: "manual",
+                message: "직접 입력으로 계속합니다.",
+              })
+              setSetup({ kind: "idle" })
+              setConfirmation({ kind: "idle" })
+            }}
+            type="button"
+          >
+            직접 입력
+          </button>
+        </div>
+
+        {mode === "NAVER_LOCAL" ? (
+          <form className="gx-onboarding-form" onSubmit={handleExtraction}>
+            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+              네이버 정보
+              <input
+                className="gx-onboarding-input"
+                onChange={(event) => setInput(event.currentTarget.value)}
+                placeholder="https://naver.me/mybrunchcafe"
+                type="text"
+                value={input}
+              />
+            </label>
+            <button
+              className="gx-onboarding-primary"
+              disabled={extraction.kind === "loading"}
+              type="submit"
+            >
+              네이버 정보 제출
+            </button>
+          </form>
+        ) : null}
+
+        {mode === "MANUAL" || extraction.kind === "manual" ? (
+          <form
+            className="gx-onboarding-form"
+            onSubmit={handleManualConfirmAndSetup}
+          >
+            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+              매장명
+              <input
+                className="gx-onboarding-input"
+                onChange={(event) =>
+                  setManualField("name", event.currentTarget.value)
+                }
+                required
+                type="text"
+                value={manualProfile.name}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+              주소
+              <input
+                className="gx-onboarding-input"
+                onChange={(event) =>
+                  setManualField("address", event.currentTarget.value)
+                }
+                required
+                type="text"
+                value={manualProfile.address}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+              전화번호
+              <input
+                className="gx-onboarding-input"
+                onChange={(event) =>
+                  setManualField("phone", event.currentTarget.value)
+                }
+                type="tel"
+                value={manualProfile.phone}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+              영업시간
+              <input
+                className="gx-onboarding-input"
+                onChange={(event) =>
+                  setManualField("hours", event.currentTarget.value)
+                }
+                type="text"
+                value={manualProfile.hours}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+              웹사이트
+              <input
+                className="gx-onboarding-input"
+                onChange={(event) =>
+                  setManualField("websiteUri", event.currentTarget.value)
+                }
+                type="url"
+                value={manualProfile.websiteUri}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+              업종
+              <input
+                className="gx-onboarding-input"
+                onChange={(event) =>
+                  setManualField("category", event.currentTarget.value)
+                }
+                required
+                type="text"
+                value={manualProfile.category}
+              />
+            </label>
+            <button
+              className="gx-onboarding-primary"
+              disabled={
+                confirmation.kind === "loading" || setup.kind === "loading"
+              }
+              type="submit"
+            >
+              직접 입력 저장 후 GBP 세팅 확인
+            </button>
+          </form>
+        ) : null}
 
         {submittedInput && extraction.kind !== "idle" ? (
           <ChatMessage message={submittedInput} speaker="owner" />
@@ -302,8 +585,10 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
             ) : null}
             <button
               className="gx-onboarding-primary"
-              disabled={setup.kind === "loading"}
-              onClick={handleSetup}
+              disabled={
+                confirmation.kind === "loading" || setup.kind === "loading"
+              }
+              onClick={() => handleConfirmCandidateAndSetup(extraction)}
               type="button"
             >
               다음: GBP 세팅 확인
@@ -313,6 +598,17 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
 
         {extraction.kind === "manual" ? (
           <ChatMessage message={extraction.message} speaker="assistant" />
+        ) : null}
+        {confirmation.kind === "loading" ? (
+          <TypingIndicator label="매장 정보를 저장하는 중" />
+        ) : null}
+        {confirmation.kind === "confirmed" ? (
+          <StatusCard label="매장 정보" status="success" value="확인 완료" />
+        ) : null}
+        {confirmation.kind === "error" ? (
+          <div role="alert">
+            <ChatMessage message={confirmation.message} speaker="assistant" />
+          </div>
         ) : null}
         {extraction.kind === "error" ? (
           <div role="alert">
