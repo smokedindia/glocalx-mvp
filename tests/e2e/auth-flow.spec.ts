@@ -41,7 +41,7 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
   await expect(page).toHaveURL(/\/app/)
-  await expect(page.getByLabel("홍보 의도")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "GBP 성과 요약" })).toBeVisible()
 
   await page.goto("/")
   await page.getByRole("button", { name: "시작하기" }).click()

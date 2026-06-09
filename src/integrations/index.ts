@@ -9,6 +9,7 @@ import {
   createProductionNaverSearch,
   createProductionReviews,
 } from "./production"
+import { createProductionPerformance } from "./production-performance"
 import {
   createStubBusinessInformation,
   createStubClock,
@@ -20,6 +21,7 @@ import {
   createStubReviews,
   createStubTranslation,
 } from "./stub"
+import { createStubPerformance } from "./stub-performance"
 
 export function createIntegrationAdapters(
   options: CreateIntegrationAdaptersOptions = {}
@@ -36,6 +38,7 @@ export function createIntegrationAdapters(
       googleOAuth: createProductionGoogleOAuth(env),
       gbpBusinessInformation: createProductionBusinessInformation(env),
       gbpLocalPosts: createProductionLocalPosts(env),
+      gbpPerformance: createProductionPerformance(env),
       gbpReviews: createProductionReviews(env),
       contentGeneration: createStubContentGeneration(),
       translation: createStubTranslation(),
@@ -50,6 +53,7 @@ export function createIntegrationAdapters(
     googleOAuth: createStubGoogleOAuth(),
     gbpBusinessInformation: createStubBusinessInformation(),
     gbpLocalPosts: createStubLocalPosts(),
+    gbpPerformance: createStubPerformance(),
     gbpReviews: createStubReviews(),
     contentGeneration: createStubContentGeneration(),
     translation: createStubTranslation(),

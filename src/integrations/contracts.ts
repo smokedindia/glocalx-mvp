@@ -63,6 +63,58 @@ export type UpdateReplyInput = {
   readonly comment: string
 }
 
+export const gbpPerformanceDailyMetrics = [
+  "BUSINESS_IMPRESSIONS_DESKTOP_MAPS",
+  "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH",
+  "BUSINESS_IMPRESSIONS_MOBILE_MAPS",
+  "BUSINESS_IMPRESSIONS_MOBILE_SEARCH",
+  "BUSINESS_DIRECTION_REQUESTS",
+  "CALL_CLICKS",
+  "WEBSITE_CLICKS",
+] as const
+
+export type GbpPerformanceDailyMetric =
+  (typeof gbpPerformanceDailyMetrics)[number]
+
+export type GbpPerformancePeriod = "current" | "previous"
+
+export type GbpPerformanceDate = {
+  readonly day: number
+  readonly month: number
+  readonly year: number
+}
+
+export type GbpPerformanceDailyRange = {
+  readonly endDate: GbpPerformanceDate
+  readonly startDate: GbpPerformanceDate
+}
+
+export type FetchGbpPerformanceInput = {
+  readonly accessToken: string
+  readonly dailyMetrics: readonly GbpPerformanceDailyMetric[]
+  readonly dailyRange: GbpPerformanceDailyRange
+  readonly location: string
+  readonly period: GbpPerformancePeriod
+}
+
+export type GbpPerformanceDatedValue = {
+  readonly date: GbpPerformanceDate
+  readonly value?: string | undefined
+}
+
+export type GbpPerformanceDailyMetricTimeSeries = {
+  readonly dailyMetric: GbpPerformanceDailyMetric
+  readonly timeSeries: {
+    readonly datedValues: readonly GbpPerformanceDatedValue[]
+  }
+}
+
+export type GbpPerformanceApiResponse = {
+  readonly multiDailyMetricTimeSeries: readonly {
+    readonly dailyMetricTimeSeries: readonly GbpPerformanceDailyMetricTimeSeries[]
+  }[]
+}
+
 export interface NaverSearchAdapter {
   searchLocal(
     input: NaverSearchInput
@@ -84,6 +136,12 @@ export interface GbpLocalPostsAdapter {
 export interface GbpReviewsAdapter {
   listReviews(input: ListReviewsInput): AdapterResult<HttpRequestSpec>
   updateReply(input: UpdateReplyInput): AdapterResult<HttpRequestSpec>
+}
+
+export interface GbpPerformanceAdapter {
+  fetchMultiDailyMetricsTimeSeries(
+    input: FetchGbpPerformanceInput
+  ): AdapterResult<GbpPerformanceApiResponse | HttpRequestSpec>
 }
 
 export interface ContentGenerationAdapter {
@@ -113,6 +171,7 @@ export type IntegrationAdapters = {
   readonly googleOAuth: GoogleOAuthAdapter
   readonly gbpBusinessInformation: GbpBusinessInformationAdapter
   readonly gbpLocalPosts: GbpLocalPostsAdapter
+  readonly gbpPerformance: GbpPerformanceAdapter
   readonly gbpReviews: GbpReviewsAdapter
   readonly contentGeneration: ContentGenerationAdapter
   readonly translation: TranslationAdapter

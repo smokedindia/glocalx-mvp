@@ -93,6 +93,7 @@ test("full unified stub happy path", async ({ page }) => {
   await expectNoPrototypeChrome(page)
   await completeSetup(page)
   await expectNoPrototypeChrome(page)
+  await page.getByRole("button", { name: "포스팅" }).click()
   await page.getByLabel("홍보 의도").fill("주말 브런치 신메뉴 홍보")
   await page.getByRole("button", { name: "GBP 초안 만들기" }).click()
   await expect(

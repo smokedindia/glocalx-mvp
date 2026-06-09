@@ -29,6 +29,7 @@ test("app post draft preview from api", async ({ page }) => {
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
+  await page.getByRole("button", { name: "포스팅" }).click()
   await expect(page.getByRole("button", { name: "포스팅" })).toHaveAttribute(
     "aria-current",
     "page"
@@ -57,6 +58,7 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
+  await page.getByRole("button", { name: "포스팅" }).click()
   await expect(page.getByRole("button", { name: "포스팅" })).toHaveAttribute(
     "aria-current",
     "page"
