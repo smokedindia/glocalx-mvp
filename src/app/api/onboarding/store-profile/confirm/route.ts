@@ -6,9 +6,12 @@ import {
   getStoredSessionFromCookieValues,
   onboardingCompleteCookieName,
 } from "@/auth/session"
-import { gbpSetupRequestSchema, parseRoutePayload } from "@/domain/schemas"
-import { setupGoogleBusinessProfile } from "@/gbp/setup"
+import {
+  confirmedStoreProfileSchema,
+  parseRoutePayload,
+} from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
+import { confirmStoreProfile } from "@/onboarding/store-profile"
 import { openDatabase } from "@/server/db/sqlite"
 
 type JsonPayloadResult =
@@ -48,7 +51,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const parsed = parseRoutePayload(gbpSetupRequestSchema, payload.payload)
+  const parsed = parseRoutePayload(confirmedStoreProfileSchema, payload.payload)
   if (parsed.kind === "validation_error") {
     return Response.json(
       {
@@ -76,16 +79,16 @@ export async function POST(request: NextRequest) {
   }
 
   const database = openDatabase()
-
   try {
     const adapters = createIntegrationAdapters({ database })
-    const result = await setupGoogleBusinessProfile({
-      adapters,
-      database,
-      mode: parsed.value.mode,
-      storeId: session.storeId,
-    })
-    return Response.json(result)
+    return Response.json(
+      confirmStoreProfile({
+        adapters,
+        database,
+        profile: parsed.value,
+        storeId: session.storeId,
+      })
+    )
   } finally {
     database.close()
   }

@@ -28,11 +28,12 @@ export function createIntegrationAdapters(
   const mode =
     env["APP_INTEGRATION_MODE"] === "production" ? "production" : "stub"
   const now = options.now ?? new Date("2026-06-04T00:00:00.000Z")
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch
 
   if (mode === "production") {
     return {
       mode,
-      naverSearch: createProductionNaverSearch(env),
+      naverSearch: createProductionNaverSearch(env, fetchImpl),
       googleOAuth: createProductionGoogleOAuth(env),
       gbpBusinessInformation: createProductionBusinessInformation(env),
       gbpLocalPosts: createProductionLocalPosts(env),

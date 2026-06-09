@@ -18,6 +18,31 @@ export type AdapterOk<TValue> = {
 
 export type AdapterResult<TValue> = AdapterOk<TValue> | BlockedByCredentials
 
+export type ExternalFetch = (
+  input: string,
+  init?: RequestInit
+) => Promise<Response>
+
+export type NaverSearchUnavailableReason =
+  | "HTTP_ERROR"
+  | "NETWORK_ERROR"
+  | "TIMEOUT"
+
+export class NaverSearchUnavailableError extends Error {
+  readonly name = "NaverSearchUnavailableError"
+
+  constructor(
+    readonly reason: NaverSearchUnavailableReason,
+    readonly status: number | undefined = undefined
+  ) {
+    super(
+      status === undefined
+        ? `Naver local search unavailable: ${reason}`
+        : `Naver local search unavailable: ${reason} ${status}`
+    )
+  }
+}
+
 export type HttpMethod = "GET" | "POST" | "PUT"
 
 export type HttpRequestSpec = {
@@ -31,6 +56,7 @@ export type HttpRequestSpec = {
 export type NaverSearchInput = {
   readonly query: string
   readonly display: number
+  readonly rawInput?: string
 }
 
 export type NaverSearchResult = {
@@ -42,6 +68,26 @@ export type CreateLocationInput = {
   readonly accountName: string
   readonly requestId: string
   readonly location: Readonly<Record<string, unknown>>
+}
+
+export type SearchGoogleLocationsInput = {
+  readonly accessToken: string
+  readonly location: Readonly<Record<string, unknown>>
+}
+
+export type GoogleLocationMatch = {
+  readonly googleLocationId: string
+  readonly requestAdminRightsUrl?: string
+}
+
+export type SearchGoogleLocationsResult = {
+  readonly matches: readonly GoogleLocationMatch[]
+}
+
+export type RequestAdminRightsInput = {
+  readonly accessToken: string
+  readonly googleLocationId: string
+  readonly requestAdminRightsUrl: string
 }
 
 export type CreateLocalPostInput = {
@@ -66,7 +112,7 @@ export type UpdateReplyInput = {
 export interface NaverSearchAdapter {
   searchLocal(
     input: NaverSearchInput
-  ): AdapterResult<NaverSearchResult | HttpRequestSpec>
+  ): Promise<AdapterResult<NaverSearchResult | HttpRequestSpec>>
 }
 
 export interface GoogleOAuthAdapter {
@@ -74,7 +120,18 @@ export interface GoogleOAuthAdapter {
 }
 
 export interface GbpBusinessInformationAdapter {
-  createLocation(input: CreateLocationInput): AdapterResult<HttpRequestSpec>
+  searchLocations(
+    input: SearchGoogleLocationsInput
+  ): Promise<AdapterResult<SearchGoogleLocationsResult | HttpRequestSpec>>
+  requestAdminRights(
+    input: RequestAdminRightsInput
+  ): Promise<AdapterResult<HttpRequestSpec>>
+  validateLocation(
+    input: CreateLocationInput
+  ): Promise<AdapterResult<HttpRequestSpec>>
+  createLocation(
+    input: CreateLocationInput
+  ): Promise<AdapterResult<HttpRequestSpec>>
 }
 
 export interface GbpLocalPostsAdapter {
@@ -123,5 +180,6 @@ export type IntegrationAdapters = {
 export type CreateIntegrationAdaptersOptions = {
   readonly env?: AdapterEnvironment
   readonly database?: SqliteDatabase
+  readonly fetchImpl?: ExternalFetch
   readonly now?: Date
 }
