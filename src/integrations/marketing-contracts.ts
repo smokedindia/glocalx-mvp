@@ -1,4 +1,5 @@
 export type MarketingPlatform = "GBP" | "INSTAGRAM"
+export type MarketingLocale = "ko" | "en" | "ja"
 
 export type MarketingSuggestionMode = "request" | "accepted" | "skipped"
 
@@ -55,6 +56,7 @@ export type MarketingPlatformPreview = {
   readonly hashtags: readonly string[]
   readonly imageAssetId: string | null
   readonly label: string
+  readonly locale?: MarketingLocale | undefined
   readonly platform: MarketingPlatform
   readonly uploadNotes: readonly string[]
 }

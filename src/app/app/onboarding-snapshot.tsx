@@ -86,9 +86,7 @@ export function OnboardingSnapshot({
         speaker="assistant"
       />
       <div className="gx-actions-row">
-        <OnboardingChoiceButton
-          onClick={() => onComposerPreset("https://naver.me/mybrunchcafe")}
-        >
+        <OnboardingChoiceButton onClick={() => onComposerPreset("")}>
           네이버 플레이스 링크 붙여넣기
         </OnboardingChoiceButton>
         <OnboardingChoiceButton

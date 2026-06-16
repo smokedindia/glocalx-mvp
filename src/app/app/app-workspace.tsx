@@ -7,12 +7,12 @@ import { ReferenceComposer } from "@/app/_components/reference-composer"
 
 import {
   appNavItems,
+  platformPreviewKey,
   parseDraftState,
   parsePostingDecisionTurnState,
   parsePublishState,
   type AppNavId,
   type DraftState,
-  type MarketingPlatform,
   type PostingChatTurn,
   type PostingDecisionTurnState,
   type PublishState,
@@ -34,13 +34,21 @@ function isAppNavId(navId: string): navId is AppNavId {
   return appNavItems.some((item) => item.id === navId)
 }
 
+function previewKeyForDraft(draft: DraftState): string {
+  if (draft.kind !== "ready") {
+    return "GBP:ko"
+  }
+  const firstPreview = draft.platformPreviews[0]
+  return firstPreview === undefined ? "GBP:ko" : platformPreviewKey(firstPreview)
+}
+
 export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   const [activeNavId, setActiveNavId] = useState<AppNavId>("photo")
   const [composerFocusKey, setComposerFocusKey] = useState(0)
   const [composerMessage, setComposerMessage] = useState("")
   const screenRef = useRef<HTMLDivElement>(null)
   const onboarding = useAppOnboarding()
-  const [activePlatform, setActivePlatform] = useState<MarketingPlatform>("GBP")
+  const [activePreviewKey, setActivePreviewKey] = useState("GBP:ko")
   const [draft, setDraft] = useState<DraftState>({ kind: "idle" })
   const [intent, setIntent] = useState("이번 주말 브런치 신메뉴 홍보")
   const [postingChatTurns, setPostingChatTurns] = useState<
@@ -132,8 +140,9 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
         response,
         "마케팅 초안을 생성하지 못했습니다."
       )
-      setDraft(parseDraftState(payload))
-      setActivePlatform("GBP")
+      const nextDraft = parseDraftState(payload)
+      setDraft(nextDraft)
+      setActivePreviewKey(previewKeyForDraft(nextDraft))
     } catch (caught) {
       setDraft({
         kind: "error",
@@ -213,7 +222,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
       ])
       if (nextDecision.draft !== null) {
         setDraft(nextDecision.draft)
-        setActivePlatform("GBP")
+        setActivePreviewKey(previewKeyForDraft(nextDecision.draft))
         setActiveNavId("posting")
       }
       setPostingDecision({ kind: "idle" })
@@ -240,7 +249,8 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
     if (draft.kind !== "ready") {
       setPublish({
         kind: "blocked",
-        message: "먼저 이미지와 홍보 의도를 분석해 게시물 초안을 만들어주세요.",
+        message:
+          "먼저 사진과 알리고 싶은 말이나 단어를 분석해 게시물 초안을 만들어주세요.",
       })
       return
     }
@@ -285,7 +295,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
 
   function handleComposerAttach(): void {
     if (activeNavId === "onboarding") {
-      handleComposerPreset("https://naver.me/mybrunchcafe")
+      handleComposerPreset("")
       return
     }
 
@@ -335,14 +345,14 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
       >
         <ReferenceFlowScreens
           activeNavId={activeNavId}
-          activePlatform={activePlatform}
+          activePreviewKey={activePreviewKey}
           draft={draft}
           imageAssets={imageAssets}
           intent={intent}
           onDraftSubmit={handleDraftSubmit}
           onImageFiles={handleImageFiles}
           onIntentChange={setIntent}
-          onPlatformChange={setActivePlatform}
+          onPreviewChange={setActivePreviewKey}
           onComposerPreset={handleComposerPreset}
           onboardingConfirmation={onboarding.confirmation}
           onboardingExtraction={onboarding.extraction}

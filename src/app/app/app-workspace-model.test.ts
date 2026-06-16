@@ -27,6 +27,12 @@ describe("app workspace draft parser", () => {
       platformPreviews: [
         {
           copy: "브런치모먼트 홍대점에서 주말 브런치 소식을 전합니다.",
+          locale: "ko",
+          platform: "GBP",
+        },
+        {
+          copy: "Sharing the weekend brunch update.",
+          locale: "en",
           platform: "GBP",
         },
       ],

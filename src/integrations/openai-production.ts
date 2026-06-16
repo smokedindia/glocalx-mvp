@@ -60,6 +60,7 @@ const marketingPlatformPreviewSchema = z
     hashtags: z.array(z.string().min(1)).max(10),
     imageAssetId: z.string().nullable(),
     label: z.string().min(1),
+    locale: z.enum(["ko", "en", "ja"]).optional(),
     platform: z.enum(["GBP", "INSTAGRAM"]),
     uploadNotes: z.array(z.string().min(1)).max(8),
   })

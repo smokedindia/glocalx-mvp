@@ -40,6 +40,7 @@ export type PostingDecisionTurnState =
   | { readonly kind: "error"; readonly message: string }
 
 export type MarketingPlatform = "GBP" | "INSTAGRAM"
+export type MarketingLocale = "ko" | "en" | "ja"
 
 export type MarketingImageAsset = {
   readonly dataUrl: string
@@ -85,8 +86,15 @@ export type PlatformPostPreview = {
   readonly hashtags: readonly string[]
   readonly imageAssetId: string | null
   readonly label: string
+  readonly locale: MarketingLocale
   readonly platform: MarketingPlatform
   readonly uploadNotes: readonly string[]
+}
+
+export function platformPreviewKey(
+  preview: Pick<PlatformPostPreview, "locale" | "platform">
+): string {
+  return `${preview.platform}:${preview.locale}`
 }
 
 function readNumber(value: unknown): number | undefined {
@@ -159,7 +167,7 @@ function parseDraftSuggestion(value: unknown): DraftSuggestion | null {
     ownerAction: readString(value["ownerAction"]) ?? "추천 반영",
     rationale: readString(value["rationale"]) ?? "성과 개선 가능성이 있습니다.",
     revisedIntent: readString(value["revisedIntent"]) ?? "",
-    title: readString(value["title"]) ?? "스마트 제안",
+    title: readString(value["title"]) ?? "방문을 늘리는 문구 제안",
   }
 }
 
@@ -174,6 +182,7 @@ function parsePlatformPostPreview(
   if (platform !== "GBP" && platform !== "INSTAGRAM") {
     return undefined
   }
+  const locale = readMarketingLocale(value["locale"])
 
   return {
     aspectRatio: readString(value["aspectRatio"]) ?? "1:1",
@@ -184,8 +193,24 @@ function parsePlatformPostPreview(
     label:
       readString(value["label"]) ??
       (platform === "GBP" ? "Google 비즈니스 프로필" : "Instagram 피드"),
+    locale,
     platform,
     uploadNotes: readStringArray(value["uploadNotes"]),
+  }
+}
+
+function readMarketingLocale(value: unknown): MarketingLocale {
+  const locale = readString(value)
+  switch (locale) {
+    case "en":
+      return "en"
+    case "ja":
+      return "ja"
+    case "ko":
+    case undefined:
+      return "ko"
+    default:
+      return "ko"
   }
 }
 
@@ -215,17 +240,61 @@ function parseGenerationStatus(value: unknown): string {
   return "ready"
 }
 
-function fallbackPlatformPreview(koreanCopy: string): PlatformPostPreview {
-  return {
+function fallbackPlatformPreviews(
+  koreanCopy: string,
+  englishCopy: string
+): readonly PlatformPostPreview[] {
+  const koreanPreview = {
     aspectRatio: "4:3",
     callToAction: "길찾기",
     copy: koreanCopy,
     hashtags: ["#홍대브런치", "#주말브런치"],
     imageAssetId: null,
     label: "Google 비즈니스 프로필",
+    locale: "ko",
     platform: "GBP",
     uploadNotes: ["매장명 포함"],
+  } satisfies PlatformPostPreview
+  const englishPreview = {
+    aspectRatio: "4:3",
+    callToAction: "Directions",
+    copy: englishCopy,
+    hashtags: ["#hongdaebrunch", "#weekendbrunch"],
+    imageAssetId: null,
+    label: "English version",
+    locale: "en",
+    platform: "GBP",
+    uploadNotes: ["English copy ready", "Same image can be reused"],
+  } satisfies PlatformPostPreview
+
+  return englishCopy.trim() === ""
+    ? [koreanPreview]
+    : [koreanPreview, englishPreview]
+}
+
+function withEnglishPreviewFallback(
+  previews: readonly PlatformPostPreview[],
+  englishCopy: string
+): readonly PlatformPostPreview[] {
+  const hasEnglishPreview = previews.some((preview) => preview.locale === "en")
+  if (hasEnglishPreview || englishCopy.trim() === "") {
+    return previews
   }
+
+  return [
+    ...previews,
+    {
+      aspectRatio: previews[0]?.aspectRatio ?? "4:3",
+      callToAction: "Copy English text",
+      copy: englishCopy,
+      hashtags: ["#hongdaebrunch", "#weekendbrunch"],
+      imageAssetId: previews[0]?.imageAssetId ?? null,
+      label: "English version",
+      locale: "en",
+      platform: "GBP",
+      uploadNotes: ["English copy ready", "Review before posting"],
+    },
+  ]
 }
 
 export function parseDraftState(payload: unknown): DraftState {
@@ -258,10 +327,11 @@ export function parseDraftState(payload: unknown): DraftState {
   }
 
   const platformPreviews = readPlatformPreviews(preview["platformPreviews"])
+  const englishCopy = readString(preview["englishCopy"]) ?? ""
 
   return {
     draftId,
-    englishCopy: readString(preview["englishCopy"]) ?? "",
+    englishCopy,
     generationStatus: parseGenerationStatus(preview["generationStatus"]),
     images: readDraftImagePreviews(preview["images"]),
     intentAnalysis: parseIntentAnalysis(preview["intentAnalysis"]),
@@ -269,8 +339,8 @@ export function parseDraftState(payload: unknown): DraftState {
     koreanCopy,
     platformPreviews:
       platformPreviews.length > 0
-        ? platformPreviews
-        : [fallbackPlatformPreview(koreanCopy)],
+        ? withEnglishPreviewFallback(platformPreviews, englishCopy)
+        : fallbackPlatformPreviews(koreanCopy, englishCopy),
     suggestion: parseDraftSuggestion(preview["suggestion"]),
   }
 }

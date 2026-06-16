@@ -181,7 +181,7 @@ function SingleCandidateConfirmation({
     <div className="grid gap-3">
       <StoreInfoCard draft={candidate} />
       <ChatMessage
-        message="검색된 매장이 맞나요? 맞으면 확인하고, 아니면 다시 검색해주세요."
+        message="검색된 매장이 맞나요? 맞으면 ‘예, 맞아요’를 눌러주세요. 아니면 다시 검색할게요."
         speaker="assistant"
       />
       <div aria-label="검색된 매장 확인" className="gx-actions-row">
@@ -190,7 +190,7 @@ function SingleCandidateConfirmation({
           onClick={() => onConfirm(candidate)}
           type="button"
         >
-          매장 확인
+          예, 맞아요
         </button>
         <button
           className="gx-choice-chip"
@@ -209,12 +209,12 @@ function missingFieldCopy(missingFields: readonly string[]): string {
   const needsPhone = missingFields.includes("phone")
   const needsHours = missingFields.includes("hours")
   if (needsPhone) {
-    return "매장 정보를 찾았어요. 먼저 전화번호를 알려주세요. 예: 010-1234-5678. 위 양식에 직접 입력해도 됩니다."
+    return "매장 정보를 찾았어요. 먼저 전화번호를 메시지로 알려주세요. 예: 010-1234-5678"
   }
   if (needsHours) {
-    return "영업시간을 알려주세요. 예: 평일 오후 6시부터 10시까지. 위 양식에 직접 입력해도 됩니다."
+    return "영업시간을 메시지로 알려주세요. 예: 평일 오후 6시부터 10시까지"
   }
-  return "입력해주신 정보를 양식에 채웠어요. 틀린 곳이 있으면 고치고, 맞으면 매장 정보 확인을 눌러주세요."
+  return "필요한 매장 정보를 확인했어요. 정보가 맞으면 ‘예’ 또는 ‘맞아요’라고 답해주세요."
 }
 
 export function SlotCollectionPanel({

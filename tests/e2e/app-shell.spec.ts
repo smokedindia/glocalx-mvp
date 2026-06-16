@@ -22,7 +22,7 @@ async function completeOnboarding(page: Page): Promise<void> {
     .fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
-  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
+  await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
     .fill("평일 9-6이에요")
@@ -30,12 +30,12 @@ async function completeOnboarding(page: Page): Promise<void> {
   await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
     "평일 09:00-18:00"
   )
-  await page.getByRole("button", { name: "매장 정보 확인" }).click()
+  await page.getByRole("button", { name: "예, 맞아요" }).click()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
-  await page.getByRole("button", { name: "대시보드로 이동" }).click()
+  await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
   await expect(page).toHaveURL(/\/app/)
-  await expect(page.getByText("STEP 2 · 사진 자동 고도화")).toBeVisible()
+  await expect(page.getByText("STEP 2 · 홍보 콘텐츠 넣기")).toBeVisible()
 }
 
 test.beforeEach(({ page }, testInfo) => {
@@ -50,14 +50,14 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
   await page.getByRole("button", { name: "이메일로 시작" }).click()
   await completeOnboarding(page)
 
-  const photoTab = page.getByRole("button", { name: "사진 고도화" })
-  const postingTab = page.getByRole("button", { name: "다채널 포스팅" })
+  const photoTab = page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
+  const postingTab = page.getByRole("button", { name: "여러 SNS 자동홍보" })
 
   await expect(photoTab).toHaveAttribute("aria-current", "page")
   await postingTab.click()
   await expect(postingTab).toHaveAttribute("aria-current", "page")
   await expect(
-    page.getByText("이미지와 홍보 의도를 먼저 분석하면")
+    page.getByText("사진과 알리고 싶은 말이나 단어를 먼저 분석하면")
   ).toBeVisible()
 
   writeFileSync(
@@ -93,7 +93,7 @@ test("app onboarding quick replies drive the bottom composer", async ({
     .getByRole("button", { name: "네이버 플레이스 링크 붙여넣기" })
     .click()
   await expect(composer).toBeFocused()
-  await expect(composer).toHaveValue("https://naver.me/mybrunchcafe")
+  await expect(composer).toHaveValue("")
 
   await page.getByRole("button", { name: "상호명으로 검색" }).click()
   await expect(composer).toHaveValue("브런치모먼트")
@@ -101,10 +101,10 @@ test("app onboarding quick replies drive the bottom composer", async ({
   await composer.press("Enter")
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
   await expect(
-    page.getByRole("button", { exact: true, name: "매장 확인" })
+    page.getByRole("button", { exact: true, name: "예, 맞아요" })
   ).toBeVisible()
   await expect(
-    page.getByText("영업시간을 알려주세요", { exact: false })
+    page.getByText("영업시간을 메시지로 알려주세요", { exact: false })
   ).toHaveCount(0)
   await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
     "aria-current",
@@ -121,7 +121,7 @@ test("app onboarding quick replies drive the bottom composer", async ({
   await expect(
     page.getByText("네이버에서 매장 정보를 찾았습니다.")
   ).toBeVisible()
-  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
+  await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
   await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
     "aria-current",
     "page"
@@ -164,29 +164,30 @@ test("app onboarding keeps Korean composition input and exposes editable store f
   await page.getByRole("button", { name: "전송" }).click()
 
   await expect(page.getByText("우빈떡볶이", { exact: true })).toBeVisible()
-  await expect(page.getByText("먼저 전화번호를 알려주세요")).toHaveCount(0)
-  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
+  await expect(page.getByText("먼저 전화번호를 메시지로")).toHaveCount(0)
+  await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
   const storeName = page.getByRole("textbox", { name: "상호" })
-  await expect(storeName).toBeVisible()
-  await expect(storeName).toHaveValue("우빈떡볶이 홍대점")
-
-  await storeName.fill("우빈떡볶이 신촌점")
-  await expect(storeName).toHaveValue("우빈떡볶이 신촌점")
+  await expect(storeName).toHaveCount(0)
 
   await composer.fill("전화번호 01082432196")
   await page.getByRole("button", { name: "전송" }).click()
-  await expect(page.getByRole("textbox", { name: "전화번호" })).toHaveValue(
-    "01082432196"
-  )
-  await expect(page.getByText("영업시간을 알려주세요")).toBeVisible()
+  await expect(page.getByRole("textbox", { name: "전화번호" })).toHaveCount(0)
+  await expect(page.getByText("영업시간을 메시지로 알려주세요")).toBeVisible()
 
   await composer.fill("평일 12시-6시")
   await page.getByRole("button", { name: "전송" }).click()
+  await expect(storeName).toBeVisible()
+  await expect(storeName).toHaveValue("우빈떡볶이 홍대점")
+  await storeName.fill("우빈떡볶이 신촌점")
+  await expect(storeName).toHaveValue("우빈떡볶이 신촌점")
+  await expect(page.getByRole("textbox", { name: "전화번호" })).toHaveValue(
+    "01082432196"
+  )
   await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
     "평일 12:00-18:00"
   )
 
-  await page.getByRole("button", { name: "매장 정보 확인" }).click()
+  await page.getByRole("button", { name: "예, 맞아요" }).click()
   await expect(
     page.getByRole("button", { name: "다음: GBP 세팅 확인" })
   ).toBeVisible()
@@ -206,7 +207,7 @@ test("responsive browser shell keeps controls visible on mobile", async ({
     page.locator(".gx-device-island, .gx-statusbar, .gx-phone-screen")
   ).toHaveCount(0)
   await expect(
-    page.getByRole("button", { name: "사진 고도화" })
+    page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
   ).toHaveAttribute("aria-current", "page")
 
   const metrics = await page.evaluate(() => ({
