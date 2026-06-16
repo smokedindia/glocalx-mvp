@@ -87,7 +87,7 @@ describe("reference flow screens", () => {
 
     expect(screen.getByRole("button", { name: "가게 인증 및 등록" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "홍보 콘텐츠 넣기" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "여러 SNS 자동홍보" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "여러 SNS자동홍보" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "리뷰 AI 관리" })).toBeInTheDocument()
     expect(screen.getByText("알리고 싶은 말이나 단어")).toBeInTheDocument()
     expect(screen.queryByText("홍보 의도")).not.toBeInTheDocument()
@@ -147,7 +147,7 @@ describe("reference flow screens", () => {
         copy: "Try our weekend brunch menu.",
         hashtags: ["#brunch"],
         imageAssetId: null,
-        label: "English preview",
+        label: "영어버전",
         locale: "en",
         platform: "GBP",
         uploadNotes: ["Use for English-speaking visitors"],
@@ -168,7 +168,7 @@ describe("reference flow screens", () => {
       />
     )
 
-    expect(screen.getByRole("tab", { name: "English preview" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "영어버전" })).toHaveAttribute(
       "aria-selected",
       "true"
     )

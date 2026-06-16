@@ -87,11 +87,10 @@ export function PhotoScreen({
   return (
     <>
       <ChatDivider>STEP 2 · 홍보 콘텐츠 넣기</ChatDivider>
-      <ChatMessage speaker="assistant">
-        홍보에 쓸 사진과 알리고 싶은 말이나 단어를 적어주세요. 메뉴, 자랑,
-        어필포인트를 간단히 남기면 사진 보정, 외국어 문구, 자동홍보 준비까지
-        이어서 정리합니다.
-      </ChatMessage>
+      <ChatMessage
+        message="홍보를 하기위해 최소한의 사진과 우리 매장에 홍보하고 싶은 어필포인트,자랑,메뉴 등을 적어주세요. 그러면 저희가 알아서, 사진 보정, 외국어 문구, 자동홍보까지 알아서 해드려요"
+        speaker="assistant"
+      />
       <FlowCard title="사진 + 알리고 싶은 말이나 단어">
         <form className="gx-marketing-form" onSubmit={handleSubmit}>
           <label className="gx-upload-picker">

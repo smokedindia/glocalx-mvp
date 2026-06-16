@@ -48,7 +48,7 @@ test("LLM posting flow analyzes sample images and revises through chat", async (
 }) => {
   await completeOnboarding(page)
 
-  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
   await page.getByRole("button", { name: "홍보 콘텐츠 넣기" }).click()
 
   await page.locator('input[type="file"]').setInputFiles([

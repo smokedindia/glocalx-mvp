@@ -118,7 +118,7 @@ export function PostPanel({
     <section className="flex min-h-full flex-col gap-4">
       <div className="grid gap-2">
         <p className="text-xs font-black text-[var(--accent)]">
-          여러 SNS 자동홍보 채팅
+          여러 SNS자동홍보 채팅
         </p>
         <h1 className="text-xl font-black leading-7 text-[var(--ink)]">
           포스팅 작업실

@@ -48,9 +48,9 @@ test("app posting preview matches the reference flow", async ({ page }) => {
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
-  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
   await expect(
-    page.getByRole("button", { name: "여러 SNS 자동홍보" })
+    page.getByRole("button", { name: "여러 SNS자동홍보" })
   ).toHaveAttribute("aria-current", "page")
 
   await expect(
@@ -75,9 +75,9 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
-  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
   await expect(
-    page.getByRole("button", { name: "여러 SNS 자동홍보" })
+    page.getByRole("button", { name: "여러 SNS자동홍보" })
   ).toHaveAttribute("aria-current", "page")
   await page.getByRole("button", { name: "홍보 콘텐츠 넣기" }).click()
   await uploadMarketingImageAndGenerateDraft(page)
@@ -107,6 +107,7 @@ test("app report and dashboard screens render reference metrics", async ({
   await expect(page.getByText("12,480")).toBeVisible()
 
   await page
+    .getByLabel("화면 단계")
     .getByRole("button", { name: "홍보 실적 자세히 보기" })
     .click()
   await expect(

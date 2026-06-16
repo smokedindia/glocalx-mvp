@@ -70,12 +70,12 @@ export function OnboardingIntro({
         STEP 1 · 온보딩 / 구글비즈니스프로필 세팅
       </div>
       <ChatMessage
-        message="안녕하세요 사장님! 👋 저는 가게의 글로벌 마케팅을 도와드릴 글로컬엑스예요. 먼저 가게를 등록할게요. 네이버 플레이스 링크나 가게 이름을 알려주시겠어요?"
+        message="저는 우리 매장을 외국인들에게 알릴 AI 홍보 직원이에요, 먼저 매장의 정보를 등록할께요. 네이버플레이스 링크나 상호명을 알려주세요"
         speaker="assistant"
       />
       <div aria-label="온보딩 빠른 답변" className="gx-chip-row">
         <QuickReplyButton onClick={onNaverLinkAttach}>
-          네이버 플레이스 링크 붙여넣기
+          네이버플레이스 링크 붙여넣기
         </QuickReplyButton>
         <QuickReplyButton onClick={onStoreNameSearch}>
           상호명으로 검색

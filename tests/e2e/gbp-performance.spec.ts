@@ -99,6 +99,7 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   await expect(page.getByText("주간 홍보 실적 · 5/26~6/1")).toBeVisible()
   await expect(page.getByText("12,480")).toBeVisible()
   await page
+    .getByLabel("화면 단계")
     .getByRole("button", { name: "홍보 실적 자세히 보기" })
     .click()
   await expect(
@@ -119,7 +120,7 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
 
   // When: the owner switches back to posting.
   await page.getByRole("button", { name: "뒤로" }).click()
-  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
 
   // Then: the posting flow remains available.
   await expect(

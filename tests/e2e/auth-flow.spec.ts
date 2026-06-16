@@ -26,7 +26,7 @@ test("First-time demo login routes to onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "이메일로 시작" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
+  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
 })
 
 test("Kakao login routes to onboarding in local demo mode", async ({
@@ -38,7 +38,7 @@ test("Kakao login routes to onboarding in local demo mode", async ({
   await page.getByRole("button", { name: "카카오로 3초 시작" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
+  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(
@@ -58,7 +58,7 @@ test("Google login routes to onboarding in local demo mode", async ({
   await page.getByRole("button", { name: "구글로 시작" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
+  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(

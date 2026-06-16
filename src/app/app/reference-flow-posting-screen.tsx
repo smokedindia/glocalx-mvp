@@ -17,7 +17,7 @@ import type { ReferenceFlowScreensProps } from "./reference-flow-screens"
 
 function platformLabel(preview: PlatformPostPreview): string {
   if (preview.locale === "en") {
-    return "English"
+    return "영어버전"
   }
   if (preview.locale === "ja") {
     return "日本語"
@@ -95,7 +95,7 @@ export function PostingScreen({
   if (draft.kind !== "ready") {
     return (
       <>
-        <ChatDivider>STEP 3 · 여러 SNS 자동홍보</ChatDivider>
+        <ChatDivider>STEP 3 · 여러 SNS자동홍보</ChatDivider>
         <ChatMessage
           message="사진과 알리고 싶은 말이나 단어를 먼저 분석하면 채널별 게시물 미리보기가 생성됩니다."
           speaker="assistant"
@@ -131,7 +131,7 @@ export function PostingScreen({
 
   return (
     <>
-      <ChatDivider>STEP 3 · 여러 SNS 자동홍보</ChatDivider>
+      <ChatDivider>STEP 3 · 여러 SNS자동홍보</ChatDivider>
       <ChatMessage speaker="assistant">
         사진 보정과 문구 생성이 끝났습니다. 업로드 전에 채널과 언어별
         미리보기를 확인해주세요.

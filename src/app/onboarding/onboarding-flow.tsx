@@ -373,8 +373,8 @@ export function OnboardingFlow() {
                         : firstMissingStoreProfileField(profileDraft)
                     )
                   : inputMode === "naverLink"
-                    ? "네이버 플레이스 링크 붙여넣기"
-                    : "상호명을 입력하세요"
+                    ? "네이버플레이스 링크 붙여넣기"
+                    : "네이버플레이스 링크나 상호명"
               }
               ref={inputRef}
               type="text"

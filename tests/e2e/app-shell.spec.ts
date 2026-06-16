@@ -51,7 +51,7 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
   await completeOnboarding(page)
 
   const photoTab = page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
-  const postingTab = page.getByRole("button", { name: "여러 SNS 자동홍보" })
+  const postingTab = page.getByRole("button", { name: "여러 SNS자동홍보" })
 
   await expect(photoTab).toHaveAttribute("aria-current", "page")
   await postingTab.click()
@@ -86,11 +86,11 @@ test("app onboarding quick replies drive the bottom composer", async ({
   await page.getByRole("button", { name: "이메일로 시작" }).click()
   await completeOnboarding(page)
 
-  await page.getByRole("button", { name: "온보딩" }).click()
+  await page.getByRole("button", { name: "가게 인증 및 등록" }).click()
   const composer = page.getByRole("textbox", { name: "메시지 입력" })
 
   await page
-    .getByRole("button", { name: "네이버 플레이스 링크 붙여넣기" })
+    .getByRole("button", { name: "네이버플레이스 링크 붙여넣기" })
     .click()
   await expect(composer).toBeFocused()
   await expect(composer).toHaveValue("")
@@ -106,10 +106,9 @@ test("app onboarding quick replies drive the bottom composer", async ({
   await expect(
     page.getByText("영업시간을 메시지로 알려주세요", { exact: false })
   ).toHaveCount(0)
-  await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  )
+  await expect(
+    page.getByRole("button", { name: "가게 인증 및 등록" })
+  ).toHaveAttribute("aria-current", "page")
 
   await page.getByRole("button", { name: "다시 검색" }).click()
   await expect(composer).toBeFocused()
@@ -122,10 +121,9 @@ test("app onboarding quick replies drive the bottom composer", async ({
     page.getByText("네이버에서 매장 정보를 찾았습니다.")
   ).toBeVisible()
   await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
-  await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  )
+  await expect(
+    page.getByRole("button", { name: "가게 인증 및 등록" })
+  ).toHaveAttribute("aria-current", "page")
 
   await composer.fill("평일 9-6이에요")
   await composer.press("Enter")
@@ -136,10 +134,9 @@ test("app onboarding quick replies drive the bottom composer", async ({
   await composer.fill("서울커피")
   await composer.press("Enter")
   await expect(page.getByText("서울커피 홍대점")).toBeVisible()
-  await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  )
+  await expect(
+    page.getByRole("button", { name: "가게 인증 및 등록" })
+  ).toHaveAttribute("aria-current", "page")
 })
 
 test("app onboarding keeps Korean composition input and exposes editable store fields", async ({
@@ -151,7 +148,7 @@ test("app onboarding keeps Korean composition input and exposes editable store f
   await page.getByRole("button", { name: "이메일로 시작" }).click()
   await completeOnboarding(page)
 
-  await page.getByRole("button", { name: "온보딩" }).click()
+  await page.getByRole("button", { name: "가게 인증 및 등록" }).click()
   const composer = page.getByRole("textbox", { name: "메시지 입력" })
 
   await composer.dispatchEvent("compositionstart")
