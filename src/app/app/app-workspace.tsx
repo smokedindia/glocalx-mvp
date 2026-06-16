@@ -333,21 +333,6 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
           activeNavId === "dashboard" ? undefined : <AppWorkspaceTopBar />
         }
       >
-        {activeNavId === "dashboard" ? (
-          <nav aria-label="화면 단계" className="gx-flow-nav">
-            {appNavItems.map((item) => (
-              <button
-                aria-current={item.id === activeNavId ? "page" : undefined}
-                className="gx-flow-tab"
-                key={item.id}
-                onClick={() => setActiveNavId(item.id)}
-                type="button"
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        ) : null}
         <ReferenceFlowScreens
           activeNavId={activeNavId}
           activePlatform={activePlatform}
