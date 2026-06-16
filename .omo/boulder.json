@@ -2,14 +2,6 @@
   "schema_version": 2,
   "active_work_id": null,
   "works": {
-    "login-onboarding-redirect": {
-      "work_id": "login-onboarding-redirect",
-      "active_plan": ".omo/plans/login-onboarding-redirect.md",
-      "plan_name": "login-onboarding-redirect",
-      "session_ids": ["codex:019ecc22-3794-7153-bfc8-8ca0f3a33e20"],
-      "status": "completed",
-      "worktree_path": null
-    },
     "glocalx-mvp-priority-integrations": {
       "work_id": "glocalx-mvp-priority-integrations",
       "active_plan": ".omo/plans/glocalx-mvp-priority-integrations.md",
