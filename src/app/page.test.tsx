@@ -40,4 +40,17 @@ describe("login landing page", () => {
     expect(html).toContain("카카오 Client Secret이 필요합니다.")
     expect(html).toContain('role="alert"')
   })
+
+  it("maps Google state errors to a visible login message", async () => {
+    const view = await Home({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({
+        auth_error: "google_state",
+      }),
+    })
+    const html = renderToStaticMarkup(view)
+
+    expect(html).toContain("구글 로그인 세션이 만료되었습니다.")
+    expect(html).toContain('role="alert"')
+  })
 })

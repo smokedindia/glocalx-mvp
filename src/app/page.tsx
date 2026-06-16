@@ -1,6 +1,12 @@
 import { MobileShell } from "@/app/_components/mobile-shell"
 
 const authErrorMessages: Readonly<Record<string, string>> = {
+  google_callback:
+    "구글 로그인 처리 중 문제가 생겼습니다. 설정을 확인한 뒤 다시 시도해주세요.",
+  google_config:
+    "구글 로그인 설정이 아직 완료되지 않았습니다. Client ID와 Client Secret을 확인해주세요.",
+  google_state:
+    "구글 로그인 세션이 만료되었습니다. 로그인 버튼을 다시 눌러주세요.",
   kakao_callback:
     "카카오 로그인 처리 중 문제가 생겼습니다. 설정을 확인한 뒤 다시 시도해주세요.",
   kakao_client_secret:
