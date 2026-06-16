@@ -35,7 +35,7 @@ function isAppNavId(navId: string): navId is AppNavId {
 }
 
 export function AppWorkspace({ storeId }: AppWorkspaceProps) {
-  const [activeNavId, setActiveNavId] = useState<AppNavId>("photo")
+  const [activeNavId, setActiveNavId] = useState<AppNavId>("dashboard")
   const [composerFocusKey, setComposerFocusKey] = useState(0)
   const [composerMessage, setComposerMessage] = useState("")
   const screenRef = useRef<HTMLDivElement>(null)
@@ -333,6 +333,21 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
           activeNavId === "dashboard" ? undefined : <AppWorkspaceTopBar />
         }
       >
+        {activeNavId === "dashboard" ? (
+          <nav aria-label="화면 단계" className="gx-flow-nav">
+            {appNavItems.map((item) => (
+              <button
+                aria-current={item.id === activeNavId ? "page" : undefined}
+                className="gx-flow-tab"
+                key={item.id}
+                onClick={() => setActiveNavId(item.id)}
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        ) : null}
         <ReferenceFlowScreens
           activeNavId={activeNavId}
           activePlatform={activePlatform}
