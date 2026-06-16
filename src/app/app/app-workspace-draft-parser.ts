@@ -207,6 +207,7 @@ function parseGenerationStatus(value: unknown): string {
     return "ready"
   }
 
+  // Known backend generation states stay visible; unknown shapes fall back to a usable preview.
   const kind = readString(value["kind"])
   if (kind === "blocked_by_credentials") {
     return "LLM credentials required"
@@ -270,6 +271,7 @@ export function parseDraftState(payload: unknown): DraftState {
     kind: "ready",
     koreanCopy,
     platformPreviews:
+      // Core copy is enough for a GBP preview when malformed LLM preview arrays are omitted.
       platformPreviews.length > 0
         ? platformPreviews
         : [fallbackPlatformPreview(koreanCopy)],
@@ -286,6 +288,7 @@ export function parsePostingDecisionTurnState(
 
   const status = readString(payload["status"])
   if (status !== "POSTING_CONVERSATION_TURN") {
+    // Server blocks can still carry useful assistant text, so preserve it before generic fallback.
     return {
       kind: "error",
       message:
@@ -309,6 +312,7 @@ export function parsePostingDecisionTurnState(
   const parsedDraft =
     payload["draft"] === undefined ? null : parseDraftState(payload["draft"])
   if (parsedDraft?.kind === "error") {
+    // A malformed replacement draft must surface as draft failure, not a successful chat turn.
     return parsedDraft
   }
 

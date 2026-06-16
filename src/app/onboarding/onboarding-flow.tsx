@@ -84,6 +84,7 @@ export function OnboardingFlow() {
       confirmation.kind !== "idle" ||
       setup.kind !== "idle"
 
+    // Standalone onboarding scrolls only after result states change so the initial screen stays stable.
     if (!hasNewResult) {
       return
     }
@@ -138,6 +139,7 @@ export function OnboardingFlow() {
   }
 
   function resetSlotConversation(): void {
+    // Slot sessions belong to the current draft; changing search/candidate scope must clear stale turns.
     setSlotMessages([])
     setSlotSessionId(undefined)
     setSlotState({ kind: "idle" })
@@ -163,6 +165,7 @@ export function OnboardingFlow() {
     setSetup({ kind: "idle" })
     setProfileDraft(undefined)
     setSubmittedInput(nextInput)
+    // A new extraction owns the downstream flow, so prior slot answers cannot hydrate this draft.
     resetSlotConversation()
 
     try {
@@ -329,6 +332,7 @@ export function OnboardingFlow() {
     field: StoreProfileField,
     value: string
   ): void {
+    // Owner edits invalidate confirmation/setup evidence until the updated profile is confirmed again.
     setProfileDraft((currentDraft) =>
       currentDraft === undefined
         ? currentDraft

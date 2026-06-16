@@ -54,6 +54,7 @@ export function useAppOnboarding() {
   })
 
   function resetSlotConversation(): void {
+    // The app shell reuses onboarding state, so slot history is scoped to one selected draft.
     setSlotMessages([])
     setSlotSessionId(undefined)
     setSlotState({ kind: "idle" })
@@ -74,6 +75,7 @@ export function useAppOnboarding() {
     setSubmittedInput(input)
     setConfirmation({ kind: "idle" })
     setSetup({ kind: "idle" })
+    // New searches clear derived onboarding state before parsing the replacement extraction.
     resetSlotConversation()
 
     try {
@@ -160,6 +162,7 @@ export function useAppOnboarding() {
   }
 
   async function submitComposerMessage(message: string): Promise<void> {
+    // The shared composer routes to slot fill only while the active draft still has missing fields.
     if (isSlotCollectionActive()) {
       await fillMissingFields(message)
       return

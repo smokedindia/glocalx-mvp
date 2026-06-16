@@ -108,6 +108,7 @@ test("full unified stub happy path", async ({ page }) => {
   await expectNoPrototypeChrome(page)
   await completeSetup(page)
   await expectNoPrototypeChrome(page)
+  await page.getByRole("button", { name: "사진 고도화" }).click()
   await uploadMarketingImageAndGenerateDraft(page)
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()

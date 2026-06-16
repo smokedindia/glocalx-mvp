@@ -53,6 +53,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   const [publish, setPublish] = useState<PublishState>({ kind: "idle" })
   const { handleImageFiles, imageAssets } = useImageAssets({
     onImagesSelected: () => {
+      // Media changes alter the draft payload hash, so posting state is reset with the selection.
       setDraft({ kind: "idle" })
       setPostingChatTurns([])
       setPostingDecision({ kind: "idle" })
@@ -72,6 +73,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
       onboarding.confirmation.kind !== "idle" ||
       onboarding.setup.kind !== "idle"
 
+    // Background onboarding updates must not scroll dashboard/posting screens in the app shell.
     if (activeNavId !== "onboarding" || !hasOnboardingResult) {
       return
     }
@@ -147,6 +149,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   }
 
   async function handleDraftSubmit() {
+    // A fresh draft starts a fresh suggestion conversation tied to the new draft id.
     setPostingChatTurns([])
     setPostingDecision({ kind: "idle" })
     setPostingSessionId(undefined)
@@ -159,6 +162,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
     }
 
     const clientEventId = window.crypto.randomUUID()
+    // The client event id lets the route replay retries without classifying the same reply twice.
     setPostingChatTurns((currentTurns) => [
       ...currentTurns,
       {
@@ -200,6 +204,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
         return
       }
 
+      // Ready decisions either keep the chat open or hand back a replacement draft for posting.
       setPostingSessionId(nextDecision.sessionId)
       if (nextDecision.revisedIntent !== null) {
         setIntent(nextDecision.revisedIntent)
@@ -239,6 +244,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
 
   async function handlePublish() {
     if (draft.kind !== "ready") {
+      // The client blocks empty publishes; the route owns idempotency and retry-limit enforcement.
       setPublish({
         kind: "blocked",
         message: "먼저 이미지와 홍보 의도를 분석해 게시물 초안을 만들어주세요.",
