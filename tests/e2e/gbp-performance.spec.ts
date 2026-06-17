@@ -120,7 +120,7 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
 
   // When: the owner switches back to posting.
   await page.getByRole("button", { name: "뒤로" }).click()
-  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
 
   // Then: the posting flow remains available.
   await expect(

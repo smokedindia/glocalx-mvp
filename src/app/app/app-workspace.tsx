@@ -36,10 +36,10 @@ function isAppNavId(navId: string): navId is AppNavId {
 
 function previewKeyForDraft(draft: DraftState): string {
   if (draft.kind !== "ready") {
-    return "GBP:ko"
+    return "GBP"
   }
   const firstPreview = draft.platformPreviews[0]
-  return firstPreview === undefined ? "GBP:ko" : platformPreviewKey(firstPreview)
+  return firstPreview === undefined ? "GBP" : platformPreviewKey(firstPreview)
 }
 
 export function AppWorkspace({ storeId }: AppWorkspaceProps) {
@@ -48,7 +48,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   const [composerMessage, setComposerMessage] = useState("")
   const screenRef = useRef<HTMLDivElement>(null)
   const onboarding = useAppOnboarding()
-  const [activePreviewKey, setActivePreviewKey] = useState("GBP:ko")
+  const [activePreviewKey, setActivePreviewKey] = useState("GBP")
   const [draft, setDraft] = useState<DraftState>({ kind: "idle" })
   const [intent, setIntent] = useState("이번 주말 브런치 신메뉴 홍보")
   const [postingChatTurns, setPostingChatTurns] = useState<

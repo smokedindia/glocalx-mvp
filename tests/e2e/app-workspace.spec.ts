@@ -48,9 +48,9 @@ test("app posting preview matches the reference flow", async ({ page }) => {
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
-  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
   await expect(
-    page.getByRole("button", { name: "여러 SNS자동홍보" })
+    page.getByRole("button", { name: "여러 SNS 자동홍보" })
   ).toHaveAttribute("aria-current", "page")
 
   await expect(
@@ -62,8 +62,16 @@ test("app posting preview matches the reference flow", async ({ page }) => {
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
   await expect(page.getByRole("tab", { name: "Instagram 피드" })).toBeVisible()
+  await expect(page.getByText("영어버전")).toHaveCount(0)
   await page.getByRole("tab", { name: "Instagram 피드" }).click()
   await expect(page.getByText("이번 주말")).toBeVisible()
+  await expect(
+    page.getByText("Complete your weekend brunch plans")
+  ).toBeVisible()
+  await page.getByRole("button", { name: "Japanese" }).click()
+  await expect(
+    page.getByText("今週末はブランチモーメント弘大店の新メニュー")
+  ).toBeVisible()
   await expect(page.getByText("#홍대브런치")).toBeVisible()
   await page.screenshot({
     fullPage: true,
@@ -75,9 +83,9 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
-  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
   await expect(
-    page.getByRole("button", { name: "여러 SNS자동홍보" })
+    page.getByRole("button", { name: "여러 SNS 자동홍보" })
   ).toHaveAttribute("aria-current", "page")
   await page.getByRole("button", { name: "홍보 콘텐츠 넣기" }).click()
   await uploadMarketingImageAndGenerateDraft(page)

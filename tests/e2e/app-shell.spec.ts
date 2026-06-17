@@ -51,7 +51,7 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
   await completeOnboarding(page)
 
   const photoTab = page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
-  const postingTab = page.getByRole("button", { name: "여러 SNS자동홍보" })
+  const postingTab = page.getByRole("button", { name: "여러 SNS 자동홍보" })
 
   await expect(photoTab).toHaveAttribute("aria-current", "page")
   await postingTab.click()

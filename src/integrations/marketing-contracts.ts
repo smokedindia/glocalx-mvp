@@ -1,5 +1,8 @@
+import type { AdapterResult } from "./contracts"
+
 export type MarketingPlatform = "GBP" | "INSTAGRAM"
-export type MarketingLocale = "ko" | "en" | "ja"
+export type MarketingLocale = "ko" | "en" | "ja" | "zh"
+export type MarketingTranslationLocale = "en" | "ja" | "zh"
 
 export type MarketingSuggestionMode = "request" | "accepted" | "skipped"
 
@@ -49,6 +52,12 @@ export type MarketingSuggestion = {
   readonly title: string
 }
 
+export type MarketingCaptionTranslation = {
+  readonly copy: string
+  readonly label: string
+  readonly locale: MarketingTranslationLocale
+}
+
 export type MarketingPlatformPreview = {
   readonly aspectRatio: string
   readonly callToAction: string
@@ -58,6 +67,7 @@ export type MarketingPlatformPreview = {
   readonly label: string
   readonly locale?: MarketingLocale | undefined
   readonly platform: MarketingPlatform
+  readonly translations: readonly MarketingCaptionTranslation[]
   readonly uploadNotes: readonly string[]
 }
 
@@ -73,4 +83,3 @@ export interface MarketingGenerationAdapter {
     input: MarketingGenerationInput
   ): Promise<AdapterResult<MarketingGenerationResult>>
 }
-import type { AdapterResult } from "./contracts"

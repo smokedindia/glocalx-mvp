@@ -48,7 +48,7 @@ test("LLM posting flow analyzes sample images and revises through chat", async (
 }) => {
   await completeOnboarding(page)
 
-  await page.getByRole("button", { name: "여러 SNS자동홍보" }).click()
+  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
   await page.getByRole("button", { name: "홍보 콘텐츠 넣기" }).click()
 
   await page.locator('input[type="file"]').setInputFiles([
@@ -87,7 +87,11 @@ test("LLM posting flow analyzes sample images and revises through chat", async (
 
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
   await expect(page.getByRole("tab", { name: "Instagram 피드" })).toBeVisible()
+  await expect(page.getByText("영어버전")).toHaveCount(0)
   await expect(
     page.locator(".gx-post-copy").filter({ hasText: "바질 토마토 브런치" })
+  ).toBeVisible()
+  await expect(
+    page.getByText("Weekend brunch news from Brunch Moment Hongdae")
   ).toBeVisible()
 })

@@ -13,15 +13,17 @@ import type {
 
 const noop = () => undefined
 
-function baseProps(overrides: {
-  readonly activeNavId?: AppNavId
-  readonly activePreviewKey?: string
-  readonly draft?: DraftState
-  readonly postingDecision?: PostingDecisionTurnState
-} = {}) {
+function baseProps(
+  overrides: {
+    readonly activeNavId?: AppNavId
+    readonly activePreviewKey?: string
+    readonly draft?: DraftState
+    readonly postingDecision?: PostingDecisionTurnState
+  } = {}
+) {
   return {
     activeNavId: overrides.activeNavId ?? "photo",
-    activePreviewKey: overrides.activePreviewKey ?? "GBP:ko",
+    activePreviewKey: overrides.activePreviewKey ?? "GBP",
     draft: overrides.draft ?? { kind: "idle" },
     imageAssets: [],
     intent: "이번 주말 브런치 신메뉴 홍보",
@@ -51,6 +53,24 @@ function baseProps(overrides: {
     publish: { kind: "idle" },
   } satisfies React.ComponentProps<typeof ReferenceFlowScreens>
 }
+
+const captionTranslations = [
+  {
+    copy: "Try our weekend brunch menu.",
+    label: "English",
+    locale: "en",
+  },
+  {
+    copy: "週末ブランチの新メニューをお楽しみください。",
+    label: "Japanese",
+    locale: "ja",
+  },
+  {
+    copy: "欢迎来品尝周末早午餐新菜单。",
+    label: "Chinese",
+    locale: "zh",
+  },
+] as const
 
 function readyDraft(
   platformPreviews: readonly PlatformPostPreview[]
@@ -85,10 +105,18 @@ describe("reference flow screens", () => {
   it("renders CEO-facing navigation and marketing intent copy", () => {
     render(<ReferenceFlowScreens {...baseProps()} />)
 
-    expect(screen.getByRole("button", { name: "가게 인증 및 등록" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "홍보 콘텐츠 넣기" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "여러 SNS자동홍보" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "리뷰 AI 관리" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "가게 인증 및 등록" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "홍보 콘텐츠 넣기" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "여러 SNS 자동홍보" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "리뷰 AI 관리" })
+    ).toBeInTheDocument()
     expect(screen.getByText("알리고 싶은 말이나 단어")).toBeInTheDocument()
     expect(screen.queryByText("홍보 의도")).not.toBeInTheDocument()
   })
@@ -104,6 +132,7 @@ describe("reference flow screens", () => {
         label: "Google 비즈니스 프로필",
         locale: "ko",
         platform: "GBP",
+        translations: captionTranslations,
         uploadNotes: ["매장명 포함"],
       },
     ])
@@ -128,7 +157,7 @@ describe("reference flow screens", () => {
     expect(screen.getByText("제안 반영 완료")).toBeInTheDocument()
   })
 
-  it("shows English preview actions without GBP verification errors", () => {
+  it("shows translations below Instagram preview without GBP verification errors", () => {
     const draft = readyDraft([
       {
         aspectRatio: "4:3",
@@ -139,18 +168,20 @@ describe("reference flow screens", () => {
         label: "Google 비즈니스 프로필",
         locale: "ko",
         platform: "GBP",
+        translations: captionTranslations,
         uploadNotes: ["매장명 포함"],
       },
       {
-        aspectRatio: "4:3",
-        callToAction: "Directions",
-        copy: "Try our weekend brunch menu.",
-        hashtags: ["#brunch"],
+        aspectRatio: "1:1",
+        callToAction: "저장과 공유",
+        copy: "이번 주말 브런치 신메뉴를 인스타그램에서 소개하세요.",
+        hashtags: ["#브런치", "#weekendbrunch"],
         imageAssetId: null,
-        label: "영어버전",
-        locale: "en",
-        platform: "GBP",
-        uploadNotes: ["Use for English-speaking visitors"],
+        label: "Instagram 피드",
+        locale: "ko",
+        platform: "INSTAGRAM",
+        translations: captionTranslations,
+        uploadNotes: ["1:1 크롭"],
       },
     ])
 
@@ -158,7 +189,7 @@ describe("reference flow screens", () => {
       <ReferenceFlowScreens
         {...baseProps({
           activeNavId: "posting",
-          activePreviewKey: "GBP:en",
+          activePreviewKey: "INSTAGRAM",
           draft,
         })}
         publish={{
@@ -168,12 +199,22 @@ describe("reference flow screens", () => {
       />
     )
 
-    expect(screen.getByRole("tab", { name: "영어버전" })).toHaveAttribute(
+    expect(
+      screen.queryByRole("tab", { name: "영어버전" })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Instagram 피드" })).toHaveAttribute(
       "aria-selected",
       "true"
     )
+    expect(
+      screen.getByText("이번 주말 브런치 신메뉴를 인스타그램에서 소개하세요.")
+    ).toBeInTheDocument()
     expect(screen.getByText("Try our weekend brunch menu.")).toBeInTheDocument()
-    expect(screen.getByText("영어 문구 복사")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Japanese" }))
+    expect(
+      screen.getByText("週末ブランチの新メニューをお楽しみください。")
+    ).toBeInTheDocument()
+    expect(screen.getByText("인스타그램 연동 준비 중")).toBeInTheDocument()
     expect(
       screen.queryByText("Google 비즈니스 프로필 인증이 필요합니다.")
     ).not.toBeInTheDocument()
@@ -192,7 +233,9 @@ describe("reference flow screens", () => {
 
     expect(screen.getByText("친근한 답글 초안")).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: /악성 리뷰가 들어오면/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /악성 리뷰가 들어오면/ })
+    )
 
     expect(screen.getByText("악성 리뷰 대응 가이드")).toBeInTheDocument()
   })
