@@ -86,10 +86,12 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   // When: the owner opens the app.
   await page.goto("/app")
 
-  // Then: the default promotional-content step is visible.
-  await expect(page.getByText("STEP 2 · 홍보 콘텐츠 넣기")).toBeVisible()
+  // Then: the dashboard-first landing is visible.
   await expect(
-    page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
+    page.getByRole("heading", { name: "홍보 실적 자세히 보기" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "홍보 실적 자세히 보기" })
   ).toHaveAttribute("aria-current", "page")
 
   // When: the owner opens the reference report and dashboard screens.

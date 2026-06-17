@@ -10,17 +10,17 @@ import {
   demoSessionCookieName,
   demoStoreCookieName,
   ensureDemoOwnerStore,
-  onboardingCompleteCookieName,
   sessionCookieOptions,
 } from "@/auth/session"
 import {
   expiredKakaoOAuthStateCookieOptions,
+  getKakaoRedirectUri,
   isValidKakaoOAuthCallback,
   kakaoOAuthStateCookieName,
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
+import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
 import { openDatabase } from "@/server/db/sqlite"
-import { getKakaoRedirectUri } from "../start/route"
 
 function redirectToLandingClearingState(reason: string): NextResponse {
   const response = new NextResponse(null, {
@@ -55,6 +55,10 @@ export async function GET(request: NextRequest) {
     return redirectToLandingClearingState("kakao_config")
   }
 
+  if (missingTokenEncryptionEnvVars(process.env).length > 0) {
+    return redirectToLandingClearingState("kakao_config")
+  }
+
   try {
     const clientSecret = process.env["KAKAO_CLIENT_SECRET"]?.trim()
     const profile = await fetchKakaoOAuthProfile({
@@ -77,12 +81,9 @@ export async function GET(request: NextRequest) {
       database.close()
     }
 
-    const onboardingComplete =
-      request.cookies.get(onboardingCompleteCookieName)?.value === "true" ||
-      storeOnboardingComplete
     const response = new NextResponse(null, {
       headers: {
-        Location: onboardingComplete ? "/app" : "/onboarding",
+        Location: storeOnboardingComplete ? "/app" : "/onboarding",
       },
       status: 303,
     })

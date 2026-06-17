@@ -44,8 +44,21 @@ async function completeOnboarding(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/app/)
 }
 
+async function expectDashboardLanding(page: Page): Promise<void> {
+  await expect(
+    page.getByRole("heading", { name: "홍보 실적 자세히 보기" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "홍보 실적 자세히 보기" })
+  ).toHaveAttribute("aria-current", "page")
+  await expect(
+    page.getByRole("button", { name: "여러 SNS 자동홍보" })
+  ).not.toHaveAttribute("aria-current", "page")
+}
+
 test("app posting preview matches the reference flow", async ({ page }) => {
   await completeOnboarding(page)
+  await expectDashboardLanding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
   await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
@@ -60,6 +73,9 @@ test("app posting preview matches the reference flow", async ({ page }) => {
   await uploadMarketingImageAndGenerateDraft(page)
   await expect(page.getByText("방문을 늘리는 문구 제안")).toBeVisible()
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
+  await expect(
+    page.getByRole("button", { name: "여러 SNS 자동홍보" })
+  ).toHaveAttribute("aria-current", "page")
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
   await expect(page.getByRole("tab", { name: "Instagram 피드" })).toBeVisible()
   await expect(page.getByText("영어버전")).toHaveCount(0)
@@ -81,6 +97,7 @@ test("app posting preview matches the reference flow", async ({ page }) => {
 
 test("app publish blocked when location unverified", async ({ page }) => {
   await completeOnboarding(page)
+  await expectDashboardLanding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
   await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
@@ -106,6 +123,7 @@ test("app report and dashboard screens render reference metrics", async ({
   page,
 }) => {
   await completeOnboarding(page)
+  await expectDashboardLanding(page)
 
   await page.getByRole("button", { name: "주간 홍보 실적" }).click()
   await expect(
