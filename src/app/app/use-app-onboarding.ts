@@ -8,7 +8,10 @@ import {
   firstMissingStoreProfileField,
   updateStoreProfileDraftField,
 } from "@/app/onboarding/onboarding-draft-fields"
-import { storeSearchAgainPrompt } from "@/app/onboarding/onboarding-copy"
+import {
+  isStoreProfileConfirmationMessage,
+  storeSearchAgainPrompt,
+} from "@/app/onboarding/onboarding-copy"
 import {
   toExtractionState,
   toOnboardingSlotTurnState,
@@ -162,6 +165,14 @@ export function useAppOnboarding() {
   }
 
   async function submitComposerMessage(message: string): Promise<void> {
+    if (
+      profileDraft?.missingFields.length === 0 &&
+      isStoreProfileConfirmationMessage(message)
+    ) {
+      await confirm()
+      return
+    }
+
     // The shared composer routes to slot fill only while the active draft still has missing fields.
     if (isSlotCollectionActive()) {
       await fillMissingFields(message)

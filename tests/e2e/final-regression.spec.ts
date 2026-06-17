@@ -85,7 +85,7 @@ async function completeSetup(page: Page): Promise<void> {
     .fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
-  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
+  await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
     .fill("평일 9-6이에요")
@@ -93,13 +93,13 @@ async function completeSetup(page: Page): Promise<void> {
   await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
     "평일 09:00-18:00"
   )
-  await page.getByRole("button", { name: "매장 정보 확인" }).click()
+  await page.getByRole("button", { name: "예, 맞아요" }).click()
   await expect(
     page.getByRole("button", { name: "다음: GBP 세팅 확인" })
   ).toBeVisible()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
-  await page.getByRole("button", { name: "대시보드로 이동" }).click()
+  await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
 }
 
 test("full unified stub happy path", async ({ page }) => {
@@ -108,7 +108,10 @@ test("full unified stub happy path", async ({ page }) => {
   await expectNoPrototypeChrome(page)
   await completeSetup(page)
   await expectNoPrototypeChrome(page)
-  await page.getByRole("button", { name: "사진 고도화" }).click()
+  await expect(page).toHaveURL(/\/app\?nav=photo/)
+  await expect(
+    page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
+  ).toHaveAttribute("aria-current", "page")
   await uploadMarketingImageAndGenerateDraft(page)
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
