@@ -1,12 +1,16 @@
 import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
-export const demoSessionCookieName = "glocalx_demo_session"
-export const demoStoreCookieName = "glocalx_demo_store"
-export const onboardingCompleteCookieName = "glocalx_onboarding_complete"
-
-export const demoUserId = "demo-owner"
-export const demoStoreId = "demo-store"
+export {
+  demoSessionCookieName,
+  demoStoreCookieName,
+  demoStoreId,
+  demoUserId,
+  onboardingCompleteCookieName,
+  sessionCookieOptions,
+} from "./session-cookies"
+import { demoStoreId, demoUserId } from "./session-cookies"
+import type { SessionCookieValues } from "./session-cookies"
 
 export type DemoSession = {
   readonly userId: string
@@ -14,20 +18,7 @@ export type DemoSession = {
   readonly onboardingComplete: boolean
 }
 
-export type SessionCookieValues = {
-  readonly onboardingComplete: string | undefined
-  readonly storeId: string | undefined
-  readonly userId: string | undefined
-}
-
-export const sessionCookieOptions = {
-  // Session identifiers stay server-owned while remaining usable on local HTTP.
-  httpOnly: true,
-  maxAge: 60 * 60 * 24 * 7,
-  path: "/",
-  sameSite: "lax",
-  secure: process.env.NODE_ENV === "production",
-} as const
+export type { SessionCookieValues } from "./session-cookies"
 
 export function ensureDemoOwnerStore(): void {
   const database = openDatabase()

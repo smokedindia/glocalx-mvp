@@ -1,11 +1,9 @@
 import type { NextRequest } from "next/server"
 
 import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  getStoredSessionFromCookieValues,
-  onboardingCompleteCookieName,
-} from "@/auth/session"
+  getIntegrationDiagnosticsAccess,
+  getIntegrationDiagnosticsCookieValues,
+} from "@/diagnostics/integration-access"
 import { getIntegrationRuntimeDiagnostics } from "@/integrations/runtime-diagnostics"
 
 function isAdminDebugEnabled(): boolean {
@@ -13,27 +11,20 @@ function isAdminDebugEnabled(): boolean {
   return value === "1" || value === "true"
 }
 
-function hasDemoSession(request: NextRequest): boolean {
-  return (
-    getStoredSessionFromCookieValues({
-      onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
-        ?.value,
-      storeId: request.cookies.get(demoStoreCookieName)?.value,
-      userId: request.cookies.get(demoSessionCookieName)?.value,
-    }) !== undefined
-  )
-}
-
 export async function GET(request: NextRequest) {
   if (!isAdminDebugEnabled()) {
     return Response.json({ status: "NOT_FOUND" }, { status: 404 })
   }
 
-  if (!hasDemoSession(request)) {
+  const access = await getIntegrationDiagnosticsAccess(
+    getIntegrationDiagnosticsCookieValues(request.cookies)
+  )
+  if (access.status === "auth_required") {
     return Response.json(
       {
         status: "AUTH_REQUIRED",
         message: "로그인이 필요합니다.",
+        sessionCheck: access.sessionCheck,
       },
       { status: 401 }
     )
@@ -41,6 +32,7 @@ export async function GET(request: NextRequest) {
 
   return Response.json({
     status: "OK",
-    integrations: getIntegrationRuntimeDiagnostics(process.env),
+    integrations: await getIntegrationRuntimeDiagnostics(process.env),
+    sessionCheck: access.sessionCheck,
   })
 }
