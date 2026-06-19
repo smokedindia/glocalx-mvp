@@ -1,11 +1,9 @@
 import { cookies } from "next/headers"
 
 import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  getStoredSessionFromCookieValues,
-  onboardingCompleteCookieName,
-} from "@/auth/session"
+  getIntegrationDiagnosticsAccess,
+  getIntegrationDiagnosticsCookieValues,
+} from "@/diagnostics/integration-access"
 import { getIntegrationRuntimeDiagnostics } from "@/integrations/runtime-diagnostics"
 
 function isAdminDebugEnabled(): boolean {
@@ -19,19 +17,22 @@ function payloadJson(payload: unknown): string {
 
 export default async function IntegrationDiagnosticsPage() {
   const cookieStore = await cookies()
-  const session = getStoredSessionFromCookieValues({
-    onboardingComplete: cookieStore.get(onboardingCompleteCookieName)?.value,
-    storeId: cookieStore.get(demoStoreCookieName)?.value,
-    userId: cookieStore.get(demoSessionCookieName)?.value,
-  })
+  const access = await getIntegrationDiagnosticsAccess(
+    getIntegrationDiagnosticsCookieValues(cookieStore)
+  )
 
   const payload = !isAdminDebugEnabled()
     ? { status: "NOT_FOUND" }
-    : session === undefined
-      ? { status: "AUTH_REQUIRED", message: "로그인이 필요합니다." }
+    : access.status === "auth_required"
+      ? {
+          status: "AUTH_REQUIRED",
+          message: "로그인이 필요합니다.",
+          sessionCheck: access.sessionCheck,
+        }
       : {
           status: "OK",
-          integrations: getIntegrationRuntimeDiagnostics(process.env),
+          integrations: await getIntegrationRuntimeDiagnostics(process.env),
+          sessionCheck: access.sessionCheck,
         }
 
   return (
