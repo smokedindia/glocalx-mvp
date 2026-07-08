@@ -1,42 +1,90 @@
 import type { NextRequest } from "next/server"
 
+import type { PostingConversationDecision } from "@/conversations/contracts"
 import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  getStoredSessionFromCookieValues,
-  onboardingCompleteCookieName,
-} from "@/auth/session"
-import {
-  parseRoutePayload,
   postingDecisionRequestSchema,
+  type PostingDecisionRequest,
 } from "@/domain/schemas"
-import { createIntegrationAdapters } from "@/integrations"
-import { processPostingDecision } from "@/posts/posting-conversation"
-import { openDatabase } from "@/server/db/sqlite"
+import type { IntegrationAdapters } from "@/integrations/contracts"
+import { createPostDraft, revisePostDraft } from "@/posts/post-flow"
+import {
+  processPostingDecision,
+  type PostingDraftWriter,
+} from "@/posts/posting-conversation"
+import type { PostStore } from "@/server/repositories/post-store"
+import {
+  parseJsonRoutePayload,
+  readDatabaseSession,
+  requireSessionStoreAccess,
+  requiredSessionResponse,
+  withQueryableRouteDatabase,
+} from "@/server/http"
 
-type JsonPayloadResult =
-  | {
-      readonly kind: "ok"
-      readonly payload: unknown
-    }
-  | {
-      readonly kind: "invalid_json"
-    }
+type PostingDraftWriterOptions = {
+  readonly adapters: IntegrationAdapters
+  readonly postStore: PostStore
+  readonly request: PostingDecisionRequest
+  readonly storeId: string
+}
 
-async function readJsonPayload(
-  request: NextRequest
-): Promise<JsonPayloadResult> {
-  try {
-    return {
-      kind: "ok",
-      payload: await request.json(),
-    }
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return { kind: "invalid_json" }
-    }
-    throw error
+class UnexpectedPostingDecisionError extends Error {
+  readonly name = "UnexpectedPostingDecisionError"
+
+  constructor(value: never) {
+    super(`Unexpected posting decision: ${String(value)}`)
   }
+}
+
+function createPostingDraftWriter(
+  options: PostingDraftWriterOptions
+): PostingDraftWriter {
+  return async (decision: PostingConversationDecision) => {
+    switch (decision.decision) {
+      case "accepted":
+        return createPostDraft({
+          acceptedSuggestionId:
+            decision.acceptedSuggestionId ?? options.request.activeSuggestionId,
+          adapters: options.adapters,
+          imageAssets: options.request.imageAssets ?? [],
+          ownerIntent:
+            options.request.suggestionRevisedIntent ??
+            options.request.ownerIntent,
+          postStore: options.postStore,
+          storeId: options.storeId,
+          suggestionMode: "accepted",
+          targetChannel: "GBP",
+        })
+      case "skipped":
+        return createPostDraft({
+          adapters: options.adapters,
+          imageAssets: options.request.imageAssets ?? [],
+          ownerIntent: options.request.ownerIntent,
+          postStore: options.postStore,
+          storeId: options.storeId,
+          suggestionMode: "skipped",
+          targetChannel: "GBP",
+        })
+      case "revision_requested":
+        return revisePostDraft({
+          adapters: options.adapters,
+          imageAssets: options.request.imageAssets ?? [],
+          originalDraftId: options.request.draftId,
+          ownerIntent: decision.revisedIntent ?? options.request.ownerMessage,
+          postStore: options.postStore,
+          storeId: options.storeId,
+          suggestionMode: "skipped",
+          targetChannel: "GBP",
+        })
+      case "question":
+        return undefined
+      default:
+        return assertNeverPostingDecision(decision.decision)
+    }
+  }
+}
+
+function assertNeverPostingDecision(value: never): never {
+  throw new UnexpectedPostingDecisionError(value)
 }
 
 function conversationFailureResponse(error: unknown): Response {
@@ -51,78 +99,52 @@ function conversationFailureResponse(error: unknown): Response {
 }
 
 export async function POST(request: NextRequest) {
-  // Posting decisions are session-scoped before accepting any conversation payload.
-  const session = getStoredSessionFromCookieValues({
-    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
-      ?.value,
-    storeId: request.cookies.get(demoStoreCookieName)?.value,
-    userId: request.cookies.get(demoSessionCookieName)?.value,
-  })
-  if (session === undefined) {
-    return Response.json(
-      {
-        status: "AUTH_REQUIRED",
-        message: "로그인이 필요합니다.",
-      },
-      { status: 401 }
-    )
-  }
+  return withQueryableRouteDatabase(
+    async ({ adapters, conversationStore, postStore, sessionStore }) => {
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return requiredSessionResponse()
+      }
 
-  // Decode malformed JSON separately so Zod only handles well-formed payloads.
-  const payload = await readJsonPayload(request)
-  if (payload.kind === "invalid_json") {
-    return Response.json(
-      {
-        status: "VALIDATION_ERROR",
-        message: "요청 JSON을 읽을 수 없습니다.",
-      },
-      { status: 400 }
-    )
-  }
+      const parsed = await parseJsonRoutePayload(
+        request,
+        postingDecisionRequestSchema
+      )
+      if (parsed.kind === "response") {
+        return parsed.response
+      }
 
-  const parsed = parseRoutePayload(
-    postingDecisionRequestSchema,
-    payload.payload
-  )
-  if (parsed.kind === "validation_error") {
-    return Response.json(
-      {
-        status: "VALIDATION_ERROR",
-        issues: parsed.issues,
-      },
-      { status: 400 }
-    )
-  }
+      const forbiddenResponse = requireSessionStoreAccess(
+        session,
+        parsed.value.storeId
+      )
+      if (forbiddenResponse !== undefined) {
+        return forbiddenResponse
+      }
 
-  // Conversation updates are rejected if the requested store is not session-owned.
-  if (parsed.value.storeId !== session.storeId) {
-    return Response.json(
-      {
-        status: "FORBIDDEN",
-        message: "요청한 매장에 접근할 수 없습니다.",
-      },
-      { status: 403 }
-    )
-  }
+      const draftWriter = createPostingDraftWriter({
+        adapters,
+        postStore,
+        request: parsed.value,
+        storeId: session.storeId,
+      })
 
-  const database = openDatabase()
-
-  try {
-    const adapters = createIntegrationAdapters({ database })
-    const result = await processPostingDecision({
-      adapters,
-      database,
-      request: parsed.value,
-      storeId: session.storeId,
-    })
-    const status = result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
-    return Response.json(result, { status })
-  } catch (error) {
-    if (error instanceof Error) {
-      return conversationFailureResponse(error)
+      try {
+        const result = await processPostingDecision({
+          adapters,
+          conversationStore,
+          draftWriter,
+          request: parsed.value,
+          storeId: session.storeId,
+        })
+        const status = result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
+        return Response.json(result, { status })
+      } catch (error) {
+        if (error instanceof Error) {
+          return conversationFailureResponse(error)
+        }
+        throw error
+      }
     }
-    throw error
-  } finally {
-    database.close()
-  }
+  )
 }

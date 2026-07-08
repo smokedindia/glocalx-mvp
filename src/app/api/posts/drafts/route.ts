@@ -1,41 +1,14 @@
 import type { NextRequest } from "next/server"
 
-import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  ensureDemoOwnerStore,
-  getStoredSessionFromCookieValues,
-  onboardingCompleteCookieName,
-} from "@/auth/session"
-import { parseRoutePayload, postDraftRequestSchema } from "@/domain/schemas"
-import { createIntegrationAdapters } from "@/integrations"
+import { postDraftRequestSchema } from "@/domain/schemas"
 import { createPostDraft } from "@/posts/post-flow"
-import { openDatabase } from "@/server/db/sqlite"
-
-type JsonPayloadResult =
-  | {
-      readonly kind: "ok"
-      readonly payload: unknown
-    }
-  | {
-      readonly kind: "invalid_json"
-    }
-
-async function readJsonPayload(
-  request: NextRequest
-): Promise<JsonPayloadResult> {
-  try {
-    return {
-      kind: "ok",
-      payload: await request.json(),
-    }
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return { kind: "invalid_json" }
-    }
-    throw error
-  }
-}
+import {
+  parseJsonRoutePayload,
+  readDatabaseSession,
+  requireSessionStoreAccess,
+  requiredSessionResponse,
+  withQueryableRouteDatabase,
+} from "@/server/http"
 
 function generationFailureResponse(error: unknown): Response {
   console.error("Post draft generation failed", error)
@@ -49,78 +22,49 @@ function generationFailureResponse(error: unknown): Response {
 }
 
 export async function POST(request: NextRequest) {
-  // Post generation starts from the session so drafts cannot be created anonymously.
-  const session = getStoredSessionFromCookieValues({
-    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
-      ?.value,
-    storeId: request.cookies.get(demoStoreCookieName)?.value,
-    userId: request.cookies.get(demoSessionCookieName)?.value,
-  })
-  if (session === undefined) {
-    return Response.json(
-      {
-        status: "AUTH_REQUIRED",
-        message: "로그인이 필요합니다.",
-      },
-      { status: 401 }
-    )
-  }
+  return withQueryableRouteDatabase(
+    async ({ adapters, postStore, sessionStore }) => {
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return requiredSessionResponse()
+      }
 
-  // Decode malformed JSON separately so Zod only handles well-formed payloads.
-  const payload = await readJsonPayload(request)
-  if (payload.kind === "invalid_json") {
-    return Response.json(
-      {
-        status: "VALIDATION_ERROR",
-        message: "요청 JSON을 읽을 수 없습니다.",
-      },
-      { status: 400 }
-    )
-  }
+      const parsed = await parseJsonRoutePayload(
+        request,
+        postDraftRequestSchema
+      )
+      if (parsed.kind === "response") {
+        return parsed.response
+      }
 
-  const parsed = parseRoutePayload(postDraftRequestSchema, payload.payload)
-  if (parsed.kind === "validation_error") {
-    return Response.json(
-      {
-        status: "VALIDATION_ERROR",
-        issues: parsed.issues,
-      },
-      { status: 400 }
-    )
-  }
+      const forbiddenResponse = requireSessionStoreAccess(
+        session,
+        parsed.value.storeId
+      )
+      if (forbiddenResponse !== undefined) {
+        return forbiddenResponse
+      }
 
-  // The client store ID must match the session store before generation starts.
-  if (parsed.value.storeId !== session.storeId) {
-    return Response.json(
-      {
-        status: "FORBIDDEN",
-        message: "요청한 매장에 접근할 수 없습니다.",
-      },
-      { status: 403 }
-    )
-  }
-
-  ensureDemoOwnerStore()
-  const database = openDatabase()
-
-  try {
-    const adapters = createIntegrationAdapters({ database })
-    const result = await createPostDraft({
-      adapters,
-      database,
-      ...(parsed.value.acceptedSuggestionId === undefined
-        ? {}
-        : { acceptedSuggestionId: parsed.value.acceptedSuggestionId }),
-      imageAssets: parsed.value.imageAssets ?? [],
-      ownerIntent: parsed.value.ownerIntent,
-      storeId: session.storeId,
-      suggestionMode: parsed.value.suggestionMode ?? "request",
-      targetChannel: parsed.value.targetChannel,
-    })
-    return Response.json(result)
-  } catch (error) {
-    return generationFailureResponse(error)
-  } finally {
-    database.close()
-  }
+      try {
+        const result = await createPostDraft({
+          adapters,
+          ...(parsed.value.acceptedSuggestionId === undefined
+            ? {}
+            : { acceptedSuggestionId: parsed.value.acceptedSuggestionId }),
+          imageAssets: parsed.value.imageAssets ?? [],
+          ownerIntent: parsed.value.ownerIntent,
+          postStore,
+          storeId: session.storeId,
+          suggestionMode: parsed.value.suggestionMode ?? "request",
+          targetChannel: parsed.value.targetChannel,
+        })
+        return Response.json(result)
+      } catch (error) {
+        if (error instanceof Error) {
+          return generationFailureResponse(error)
+        }
+        throw error
+      }
+    }
+  )
 }
